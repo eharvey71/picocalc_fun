@@ -1,0 +1,65 @@
+# Enhanced Haunted Castle Adventure
+# Three puzzles: Key unlocks secret passage, Sword defeats monster, Search finds hidden room
+
+[SETTINGS]
+title=The Haunted Castle
+author=Enhanced Adventure
+version=2.0
+startroom=1
+maxscore=250
+
+[ROOMS]
+# Format: ID|Name|Description|North,South,East,West|Special
+1|Forest Path|A winding dirt path through dark trees. You can see an imposing castle to the south.|0,2,0,0|
+2|Castle Gate|An imposing iron gate blocks your way. The gate has intricate carvings and a large keyhole.|1,3,0,0|dark
+3|Courtyard|Crumbling stone courtyard with a dry fountain. The stonework looks ancient.|2,4,5,0|
+4|Great Hall|A vast hall with tattered banners hanging from the walls. Dust motes dance in shafts of light.|3,0,0,0|
+5|Kitchen|An old kitchen with rusty pots and pans scattered about.|0,0,0,3|
+6|Secret Passage|A narrow stone passage lit by flickering torches. This hidden route was opened by the gate key.|0,7,2,0|
+7|Dungeon Chamber|A dank underground chamber with stone walls covered in ancient moss.|6,0,0,0|
+8|Treasure Vault|The castle's treasure vault! Gold coins glitter in the torchlight.|0,0,0,7|
+9|Hidden Study|A secret study filled with ancient books and scrolls. You found this by searching carefully.|0,0,0,4|secret
+
+[OBJECTS]
+# Format: ID|StartRoom|Name|Description|Properties
+sword|1|rusty sword|An old sword with a dull blade, but still sharp enough to fight|takeable,weapon
+key|5|brass key|A small ornate key that looks like it fits the castle gate|takeable
+gate|2|iron gate|A heavy gate with intricate carvings and a large keyhole|fixed,lockable
+beast|7|shadow beast|A terrifying creature of living darkness with glowing red eyes|monster,fixed
+treasure|8|golden chalice|A magnificent golden chalice encrusted with jewels|takeable,treasure
+scroll|9|ancient scroll|A scroll containing the lost secrets of the castle|takeable,treasure
+bookshelf|4|tall bookshelf|A tall wooden bookshelf filled with dusty tomes|fixed,searchable
+
+[VOCABULARY]
+# Synonyms for common words
+north=n,north,go north
+south=s,south,go south  
+east=e,east,go east
+west=w,west,go west
+take=take,get,pick up,grab
+examine=examine,look at,x,look
+search=search,look behind,investigate
+attack=attack,kill,fight,slay
+use=use,unlock
+
+[RESPONSES]
+# Custom responses: trigger|condition|response|action
+examine gate||The gate has intricate carvings and a large keyhole. It looks like it needs a special key.|
+use key gate|player.has key AND room=2 AND NOT flag.gate_used|The key fits perfectly! The gate swings open to the west revealing a secret passage!|score 50,unlock west exit room 2 to 6,set flag gate_used
+unlock gate|NOT player.has key AND room=2|You need a key to unlock this gate.|
+examine beast|room=7|The shadow beast snarls at you with glowing red eyes. You'll need a weapon to fight it!|
+attack beast|player.has sword AND room=7|You swing your rusty sword at the shadow beast! The blade glows with ancient magic and the beast dissolves into mist!|score 50,remove shadow beast,unlock east exit room 7 to 8
+attack beast|NOT player.has sword AND room=7|You have no weapon to fight the beast! It swipes at you with shadowy claws.|
+fight beast|player.has sword AND room=7|You swing your rusty sword at the shadow beast! The blade glows with ancient magic and the beast dissolves into mist!|score 50,remove shadow beast,unlock east exit room 7 to 8
+search bookshelf|room=4|You carefully search behind the bookshelf and find a hidden lever! A secret door opens in the west wall.|score 50,unlock west exit room 4 to 9
+examine scroll|player.has scroll|The ancient scroll reveals the true history of this haunted castle and its treasure.|score 50
+take chalice||You pick up the magnificent golden chalice. You have found the castle's greatest treasure!|score 50
+
+[MESSAGES]
+# Standard game messages
+inventory_empty=You aren't carrying anything.
+cant_go=You can't go that way.
+dont_understand=I don't understand that.
+already_have=You already have that.
+not_here=I don't see that here.
+win_game=Congratulations! You have scored the maximum points and mastered the haunted castle!
