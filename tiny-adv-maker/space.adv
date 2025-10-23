@@ -3,7 +3,7 @@
 
 [SETTINGS]
 title=Station Alpha Crisis
-author=Adventure Labs
+author=Nerdica
 version=1.0
 startroom=1
 maxscore=500
@@ -11,7 +11,7 @@ maxscore=500
 [ROOMS]
 1|Airlock Bay|Red emergency lights flash. The station is dying.|0,3,2,0|
 2|Central Corridor|Flickering lights. Doors lead everywhere.|0,4,5,1|
-3|Life Support|Machines keep the air breathable.|1,0,0,0|
+3|Life Support|Machines that keep the air breathable supply life support to escape craft|1,0,0,0|
 4|Bridge|Command center. The captain's chair sits empty.|2,6,0,0|
 5|Engineering|Massive engines rumble and hiss.|0,0,7,2|
 6|Med Bay|Medical equipment beeps softly.|4,8,0,0|
@@ -30,7 +30,7 @@ keycard|1|security keycard|Red keycard marked AUTHORIZED.|takeable
 wrench|5|heavy wrench|A large wrench for repairs.|takeable,weapon
 medkit|6|medical kit|Emergency medical supplies.|takeable
 datapad|8|personal datapad|Captain's log datapad.|takeable
-fusecell|3|power cell|A glowing power cell.|takeable
+cell|3|power cell|A glowing power cell.|takeable
 pistol|15|plasma pistol|Standard issue pistol.|takeable,weapon
 alien|7|hostile alien|Terrifying razor claws.|monster,fixed
 aicore|14|AI core|The station's main AI.|fixed
@@ -51,18 +51,24 @@ repair=repair,fix
 read=read,view
 
 [RESPONSES]
-examine core|NOT flag.examined_aicore|AI: SYSTEMS CRITICAL.|score 10,set flag examined_aicore
-examine core|flag.examined_aicore|The AI displays the same warning.|
+examine ai|room=14|AI: SYSTEMS CRITICAL.|
+examine core|room=14|AI: SYSTEMS CRITICAL.|
 use keycard safe|player.has keycard AND room=13 AND NOT flag.safe_open|Safe clicks open revealing codes!|score 100,set flag safe_open,move codes to 13
 use keycard safe|flag.safe_open AND room=13|The safe is already open.|
 examine safe|flag.safe_open AND room=13|Safe is open. Launch codes inside!|
-examine safe|NOT flag.safe_open AND room=13|Safe is locked. Needs keycard.|
+examine safe|NOT flag.safe_open AND room=13|Safe is locked.|
 take codes|flag.safe_open AND room=13|You take the launch codes!|score 50,set flag has_codes
-use fusecell aicore|player.has fusecell AND room=14|Life support stabilizes!|score 100,set flag life_fixed
-repair engines|player.has wrench AND room=5|Engines stabilize!|score 50,set flag engines_fixed
-attack alien|player.has pistol AND room=7|Plasma fire! Alien collapses!|score 100,remove hostile alien,unlock east exit room 7 to 9
-attack alien|player.has wrench AND room=7|Alien blocks! Need better weapon.|score 25
-attack alien|NOT player.has pistol AND NOT player.has wrench AND room=7|No weapon! Alien advances!|
+use cell core|player.has cell AND room=14 AND NOT flag.life_fixed|Life support stabilizes!|score 100,set flag life_fixed
+use cell core|flag.life_fixed AND room=14|The AI core already has power.|
+use cell ai|player.has cell AND room=14 AND NOT flag.life_fixed|Life support stabilizes!|score 100,set flag life_fixed
+use cell ai|flag.life_fixed AND room=14|The AI core already has power.|
+repair engine|player.has wrench AND room=5|Engines stabilize!|score 50,set flag engines_fixed
+repair engine|flag.engines_fixed AND room=5|Engines are already humming along.|
+attack alien pistol|player.has pistol AND room=7 AND NOT flag.alien_dead|Plasma fire! Alien collapses!|score 100,remove hostile alien,unlock east exit room 7 to 9,set flag alien_dead
+attack alien pistol|player.has pistol AND room=7 AND flag.alien_dead|The alien is already dead.|
+attack alien wrench|player.has wrench AND room=7 AND NOT flag.tried_wrench|Alien blocks! Need better weapon.|score 25,set flag tried_wrench
+attack alien wrench|player.has wrench AND room=7 AND flag.tried_wrench|The wrench still won't work.|
+attack alien|room=7|Attack the alien with what?|
 read datapad|player.has datapad AND NOT flag.read_datapad|LOG: Alien escaped. Keycard opens safe.|score 25,set flag read_datapad
 read datapad|flag.read_datapad|You've already read this.|
 use codes|player.has codes AND flag.engines_fixed AND flag.life_fixed AND room=12|Pod launches! Escaped!|score 75,win game

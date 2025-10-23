@@ -7,11 +7,11 @@ OPTION DEFAULT INTEGER
 
 REM ===== GLOBAL ARRAY DECLARATIONS =====
 REM Heavily reduced sizes for PicoCalc heap constraints
-DIM rooms$(20, 4)
-DIM objects$(10, 5)
+DIM rooms$(30, 4)
+DIM objects$(10, 5) LENGTH 80
 DIM inventory$(8)
-DIM responses$(30, 4)
-REM DIM vocabulary$(1, 2)
+DIM responses$(40, 4) LENGTH 100
+DIM vocabulary$(20, 2) LENGTH 100
 DIM messages$(10, 2)
 DIM gameFlags$(20)
 DIM partthing$(6)
@@ -69,7 +69,6 @@ numRooms = 0
 numObjects = 0
 
 REM ===== MAIN PROGRAM START =====
-PRINT "=== PicoCalc Adventure Player ==="
 PRINT "Enhanced with vocabulary & responses"
 PRINT
 PRINT "Adventure file to load: ";
@@ -119,68 +118,112 @@ REM    TrimCopy$ = ""
 REM  ENDIF
 REM END FUNCTION
 
-FUNCTION UpperCase$(s$)
-  LOCAL result$, i, c$, asc_val
-  result$ = ""
-  FOR i = 1 TO LEN(s$)
-    c$ = MID$(s$, i, 1)
-    asc_val = ASC(c$)
-    IF asc_val >= 97 AND asc_val <= 122 THEN
-      result$ = result$ + CHR$(asc_val - 32)
-    ELSE
-      result$ = result$ + c$
-    ENDIF
-  NEXT i
-  UpperCase$ = result$
-END FUNCTION
-
 FUNCTION NormalizeCommand$(cmd$)
-  LOCAL result$
-  result$ = UpperCase$(cmd$)
-  rem print "result$ in NormalizeCommand$ "; result$
-  ' Fast path for single-letter cardinal moves
+  LOCAL result$, i, baseWord$, synonyms$, pos1, pos2, checkWord$
+  
+  result$ = UCASE$(cmd$)
+  
+  REM Remove filler words FIRST
+  result$ = RemoveFillerWords$(result$)
+  
+  REM Fast path for single-letter moves
   IF LEN(result$) = 1 THEN
     IF result$ = "N" THEN NormalizeCommand$ = "NORTH": EXIT FUNCTION
     IF result$ = "S" THEN NormalizeCommand$ = "SOUTH": EXIT FUNCTION
-    IF result$ = "E" THEN NormalizeCommand$ = "EAST":  EXIT FUNCTION
-    IF result$ = "W" THEN NormalizeCommand$ = "WEST":  EXIT FUNCTION
-  END IF
+    IF result$ = "E" THEN NormalizeCommand$ = "EAST": EXIT FUNCTION
+    IF result$ = "W" THEN NormalizeCommand$ = "WEST": EXIT FUNCTION
+  ENDIF
   
-  REM Movement synonyms
-  IF result$ = "GO NORTH" THEN result$ = "NORTH"
-  IF result$ = "GO SOUTH" THEN result$ = "SOUTH"
-  IF result$ = "GO EAST" THEN result$ = "EAST"
-  IF result$ = "GO WEST" THEN result$ = "WEST"
+  REM Check vocabulary - match first word and replace it
+  FOR i = 1 TO numVocabulary
+    baseWord$ = UCASE$(vocabulary$(i, 0))
+    synonyms$ = UCASE$(vocabulary$(i, 1))
+    
+    REM Check if command equals base word (exact match)
+    IF result$ = baseWord$ THEN
+      NormalizeCommand$ = baseWord$
+      EXIT FUNCTION
+    ENDIF
+    
+    REM Check if command STARTS with base word + space
+    IF LEFT$(result$, LEN(baseWord$) + 1) = baseWord$ + " " THEN
+      NormalizeCommand$ = result$
+      EXIT FUNCTION
+    ENDIF
+    
+    REM Check each synonym
+    pos1 = 1
+    DO WHILE pos1 <= LEN(synonyms$)
+      pos2 = INSTR(pos1, synonyms$, ",")
+      IF pos2 = 0 THEN pos2 = LEN(synonyms$) + 1
+      
+      checkWord$ = MID$(synonyms$, pos1, pos2 - pos1)
+      
+      REM Exact match (single word command)
+      IF result$ = checkWord$ THEN
+        NormalizeCommand$ = baseWord$
+        EXIT FUNCTION
+      ENDIF
+      
+      REM Check if command STARTS with synonym + space (multi-word command)
+      IF LEFT$(result$, LEN(checkWord$) + 1) = checkWord$ + " " THEN
+        REM Replace first word with base word
+        NormalizeCommand$ = baseWord$ + MID$(result$, LEN(checkWord$) + 1)
+        EXIT FUNCTION
+      ENDIF
+      
+      pos1 = pos2 + 1
+    LOOP
+  NEXT i
   
-  REM Take synonyms
-  IF LEFT$(result$, 4) = "GET " THEN result$ = "TAKE " + MID$(result$, 5)
-  IF LEFT$(result$, 8) = "PICK UP " THEN result$ = "TAKE " + MID$(result$, 9)
-  IF LEFT$(result$, 5) = "GRAB " THEN result$ = "TAKE " + MID$(result$, 6)
-  
-  REM Examine synonyms
-  IF LEFT$(result$, 8) = "LOOK AT " THEN result$ = "EXAMINE " + MID$(result$, 9)
-  IF LEFT$(result$, 2) = "X " THEN result$ = "EXAMINE " + MID$(result$, 3)
-  IF LEFT$(result$, 5) = "LOOK " THEN result$ = "EXAMINE " + MID$(result$, 6)
-  
-  REM Use synonyms
-  IF LEFT$(result$, 9) = "ACTIVATE " THEN result$ = "USE " + MID$(result$, 10)
-  
-  REM Attack synonyms
-  IF LEFT$(result$, 5) = "KILL " THEN result$ = "ATTACK " + MID$(result$, 6)
-  IF LEFT$(result$, 6) = "FIGHT " THEN result$ = "ATTACK " + MID$(result$, 7)
-  IF LEFT$(result$, 5) = "SLAY " THEN result$ = "ATTACK " + MID$(result$, 6)
-  
-  REM Search synonyms
-  IF LEFT$(result$, 12) = "INVESTIGATE " THEN result$ = "SEARCH " + MID$(result$, 13)
-  
-  REM Repair synonyms
-  IF LEFT$(result$, 4) = "FIX " THEN result$ = "REPAIR " + MID$(result$, 5)
-  
-  REM Read synonyms
-  IF LEFT$(result$, 5) = "VIEW " THEN result$ = "READ " + MID$(result$, 6)
-  
+  REM No match - return result (already has filler words removed)
   NormalizeCommand$ = result$
-  rem print "In NormalizeCommand$, NormalizeCommand$ = "; NormalizeCommand$
+END FUNCTION
+
+FUNCTION RemoveFillerWords$(cmd$)
+  LOCAL result$, i, word$, newCmd$, inWord
+  
+  result$ = cmd$
+  
+  REM Remove " WITH ", " ON ", " AT ", " THE ", " A ", " AN "
+  REM We need to preserve spaces between real words
+  DO WHILE INSTR(result$, " WITH ") > 0
+    i = INSTR(result$, " WITH ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 6)
+  LOOP
+  
+  DO WHILE INSTR(result$, " ON ") > 0
+    i = INSTR(result$, " ON ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 4)
+  LOOP
+  
+  DO WHILE INSTR(result$, " AT ") > 0
+    i = INSTR(result$, " AT ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 4)
+  LOOP
+  
+  DO WHILE INSTR(result$, " THE ") > 0
+    i = INSTR(result$, " THE ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 5)
+  LOOP
+  
+  DO WHILE INSTR(result$, " A ") > 0
+    i = INSTR(result$, " A ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 3)
+  LOOP
+  
+  DO WHILE INSTR(result$, " AN ") > 0
+    i = INSTR(result$, " AN ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 4)
+  LOOP
+  
+  REM Clean up any double spaces
+  DO WHILE INSTR(result$, "  ") > 0
+    i = INSTR(result$, "  ")
+    result$ = LEFT$(result$, i - 1) + " " + MID$(result$, i + 2)
+  LOOP
+  
+  RemoveFillerWords$ = result$
 END FUNCTION
 
 REM ===== FILE LOADING SECTION =====
@@ -220,6 +263,9 @@ LoadAdventureFile:
         IF section$ = "OBJECTS" THEN
           GOSUB ParseObjects
         ENDIF
+        IF section$ = "VOCABULARY" THEN
+          GOSUB ParseVocabulary
+        ENDIF
         IF section$ = "RESPONSES" THEN
           GOSUB ParseResponses
         ENDIF
@@ -232,10 +278,9 @@ LoadAdventureFile:
   
   CLOSE #1
   
-  PRINT "DEBUG: Responses loaded:"
-  FOR i = 1 TO numResponses
-    PRINT i; ": ["; responses$(i,0); "] cond=["; responses$(i,1); "] msg=["; responses$(i,2); "]"
-  NEXT i
+  REM FOR i = 1 TO numResponses
+  REM   PRINT i; ": ["; responses$(i,0); "] cond=["; responses$(i,1); "] msg=["; responses$(i,2); "]"
+  REM NEXT i
 
   REM Set starting room
   currentRoom = startRoom
@@ -312,17 +357,17 @@ ParseObjects:
   ENDIF
 RETURN
 
-REM ParseVocabulary:
+ParseVocabulary:
   REM Format: word=synonym1,synonym2,synonym3
-REM  position = INSTR(dataLine$, "=")
-REM  IF position > 0 THEN
-REM    numVocabulary = numVocabulary + 1
-REM    IF numVocabulary <= 20 THEN
-REM      vocabulary$(numVocabulary, 0) = LEFT$(dataLine$, position - 1)
-REM      vocabulary$(numVocabulary, 1) = MID$(dataLine$, position + 1)
-REM    ENDIF
-REM  ENDIF
-REM RETURN
+  position = INSTR(dataLine$, "=")
+  IF position > 0 THEN
+    numVocabulary = numVocabulary + 1
+    IF numVocabulary <= 20 THEN
+      vocabulary$(numVocabulary, 0) = LEFT$(dataLine$, position - 1)
+      vocabulary$(numVocabulary, 1) = MID$(dataLine$, position + 1)
+    ENDIF
+  ENDIF
+RETURN
 
 ParseResponses:
   GOSUB SplitLine
@@ -387,12 +432,10 @@ REM ===== GAME DISPLAY SECTION =====
 
 StartGame:
   CLS
-  PRINT "==================================="
   PRINT gameTitle$
   IF gameAuthor$ <> "" THEN
     PRINT "by "; gameAuthor$
   ENDIF
-  PRINT "==================================="
   PRINT
   GOSUB ShowRoom
   GOSUB GameLoop
@@ -496,32 +539,42 @@ GameLoop:
     IF command$ <> "" THEN
       command$ = NormalizeCommand$(command$)
       
-      REM Check custom responses first
+      REM Check custom responses - find BEST match (most words wins)
       found = 0
+      bestMatchWords = 0
+      bestMatchIndex = 0
+      anyConditionFailed = 0
+      
       FOR i = 1 TO numResponses
-        tempCmd$ = UCASE$(responses$(i, 0))
-                
-        REM Check if all words in trigger are in command
-        IF tempCmd$ = "" THEN
-          REM Skip empty triggers
-        ELSE
-          REM Simple substring match
-          IF INSTR(command$, tempCmd$) > 0 THEN
-            tempCondition$ = responses$(i, 1)
+        tempCmd$ = UCASE$(responses$(i, 1))
+        
+        IF tempCmd$ <> "" THEN
+            REM Check if trigger matches command (substring match)
+            IF INSTR(command$, tempCmd$) > 0 THEN
+            
+            REM Count words in trigger (more words = more specific)
+            wordCount = 1
+            FOR j = 1 TO LEN(tempCmd$)
+                IF MID$(tempCmd$, j, 1) = " " THEN
+                wordCount = wordCount + 1
+                ENDIF
+            NEXT j
+            
+            
+            REM Evaluate condition for this match
+            tempCondition$ = responses$(i, 2)
             GOSUB EvaluateCondition
-                        
+            
             IF conditionResult = 1 THEN
-              PRINT responses$(i, 2)
-              IF responses$(i, 3) <> "" THEN
-                tempAction$ = responses$(i, 3)
-                GOSUB ExecuteActions
+              REM Condition passed - is this more specific than current best?
+              IF wordCount > bestMatchWords THEN
+                bestMatchWords = wordCount
+                bestMatchIndex = i
+                found = 1
               ENDIF
-              found = 1
-              EXIT FOR
             ELSE
-              REM Trigger matched but condition failed
-              REM Mark that we recognized the command
-              found = 2
+              REM Condition failed but command matched
+              anyConditionFailed = 1
             ENDIF
           ENDIF
         ENDIF
@@ -529,8 +582,13 @@ GameLoop:
       
       REM Handle results
       IF found = 1 THEN
-        REM Response executed successfully
-      ELSEIF found = 2 THEN
+        REM Execute the best match
+        PRINT responses$(bestMatchIndex, 3)
+        IF responses$(bestMatchIndex, 4) <> "" THEN
+          tempAction$ = responses$(bestMatchIndex, 4)
+          GOSUB ExecuteActions
+        ENDIF
+      ELSEIF anyConditionFailed = 1 THEN
         REM Command recognized but conditions not met
         PRINT "You can't do that right now."
       ELSE
@@ -653,33 +711,6 @@ HandleCommand:
     PRINT "What do you want to search?"
     RETURN
   ENDIF
-
-  REM Check if this is a custom command from responses
-  found = 0
-  FOR i = 1 TO numResponses
-    tempCmd$ = UCASE$(responses$(i, 1))
-    IF tempCmd$ <> "" THEN
-      IF INSTR(command$, tempCmd$) > 0 THEN
-        tempCondition$ = responses$(i, 2)
-        GOSUB EvaluateCondition
-        IF conditionResult = 1 THEN
-          PRINT responses$(i, 3)
-          IF responses$(i, 4) <> "" THEN
-            tempAction$ = responses$(i, 4)
-            GOSUB ExecuteActions
-          ENDIF
-          RETURN
-        ELSE
-          PRINT "You can't do that right now."
-          RETURN
-        ENDIF
-      ENDIF
-    ENDIF
-  NEXT i
-  
-  PRINT "I don't understand that command."
-  PRINT "Try: LOOK, INVENTORY, SCORE, TAKE, DROP, EXAMINE, SEARCH, USE, N/S/E/W, QUIT"
-RETURN
 
 REM ===== OBJECT INTERACTION =====
 
@@ -884,20 +915,34 @@ HandleUse:
 RETURN
 
 HandleAttack:
-  REM Extract target from ATTACK/FIGHT/KILL/SLAY (already normalized to ATTACK)
+  REM Extract target and optional weapon from ATTACK command
   objName$ = ""
   IF LEFT$(command$, 7) = "ATTACK " THEN
-    objName$ = MID$(command$, 8)
+    temp$ = MID$(command$, 8)
+  ELSE
+    RETURN
+  ENDIF
+  
+  REM Check for WITH (attack alien with wrench)
+  position = INSTR(temp$, " WITH ")
+  IF position > 0 THEN
+    objName$ = LEFT$(temp$, position - 1)
+    weapon$ = MID$(temp$, position + 6)
+    REM Rebuild as: ATTACK ALIEN WRENCH (for matching)
+    command$ = "ATTACK " + objName$ + " " + weapon$
+  ELSE
+    REM Simple attack - command already has right format
+    objName$ = temp$
   ENDIF
 
-  REM Response table first (mirror of HandleUse), using 1-based columns
+  REM Response table first - check responses with normalized command
   found = 0
-  cmdUpper$ = UCASE$(command$)
   FOR i = 1 TO numResponses
     respCmd$ = UCASE$(responses$(i, 1))
+    print "DEBUG HandleAttack: respCmd$ = "; respCmd$
     IF respCmd$ <> "" THEN
-      REM Substring match so "ATTACK ALIEN WITH WRENCH" hits "ATTACK ALIEN"
-      IF INSTR(cmdUpper$, respCmd$) > 0 THEN
+      REM Substring match
+      IF INSTR(command$, respCmd$) > 0 THEN
         tempCondition$ = responses$(i, 2)
         GOSUB EvaluateCondition
         IF conditionResult = 1 THEN
@@ -920,11 +965,7 @@ HandleAttack:
     RETURN
   ENDIF
 
-  REM Fallback: check that the target is in the room, then generic message
-  REM If a tool is included, ignore it for lookup (e.g., "ALIEN WITH WRENCH" -> "ALIEN")
-  position = INSTR(UCASE$(objName$), " WITH ")
-  IF position > 0 THEN objName$ = LEFT$(objName$, position - 1)
-
+  REM Fallback: check that the target is in the room
   found = 0
   FOR i = 1 TO numObjects
     IF VAL(objects$(i, 1)) = currentRoom THEN
@@ -1091,7 +1132,7 @@ RETURN
 REM ===== RESPONSE SYSTEM =====
 
 EvaluateCondition:
-  REM Evaluate condition string
+  REM Evaluate condition string with multiple ANDs
   conditionResult = 1
   
   REM Empty condition = always true
@@ -1099,42 +1140,56 @@ EvaluateCondition:
     RETURN
   ENDIF
   
-  REM Check for AND - split and evaluate both sides
-  andPos = INSTR(tempCondition$, " AND ")
-  IF andPos > 0 THEN
-    leftCondition$ = LEFT$(tempCondition$, andPos - 1)
-    rightCondition$ = MID$(tempCondition$, andPos + 5)
+  REM Split by AND and evaluate each part
+  REM We'll evaluate all parts and combine with AND logic
+  LOCAL currentPos, nextAnd, subCondition$, allTrue
+  
+  currentPos = 1
+  allTrue = 1
+  
+  DO WHILE currentPos <= LEN(tempCondition$) AND allTrue = 1
+    REM Find next AND
+    nextAnd = INSTR(currentPos, tempCondition$, " AND ")
     
-    REM Evaluate left side
+    IF nextAnd > 0 THEN
+      REM Extract substring before next AND
+      subCondition$ = MID$(tempCondition$, currentPos, nextAnd - currentPos)
+      currentPos = nextAnd + 5
+    ELSE
+      REM Last condition (no more ANDs)
+      subCondition$ = MID$(tempCondition$, currentPos)
+      currentPos = LEN(tempCondition$) + 1
+    ENDIF
+    
+    REM Trim spaces from subCondition
+    DO WHILE LEFT$(subCondition$, 1) = " " AND LEN(subCondition$) > 0
+      subCondition$ = MID$(subCondition$, 2)
+    LOOP
+    DO WHILE RIGHT$(subCondition$, 1) = " " AND LEN(subCondition$) > 0
+      subCondition$ = LEFT$(subCondition$, LEN(subCondition$) - 1)
+    LOOP
+    
+    REM Evaluate this single condition
     temp$ = tempCondition$
-    tempCondition$ = leftCondition$
+    tempCondition$ = subCondition$
     GOSUB EvaluateSingleCondition
-    leftResult = conditionResult
-    
-    REM Evaluate right side
-    tempCondition$ = rightCondition$
-    GOSUB EvaluateSingleCondition
-    rightResult = conditionResult
-    
     tempCondition$ = temp$
     
-    REM Both must be true
-    IF leftResult = 1 AND rightResult = 1 THEN
-      conditionResult = 1
-    ELSE
-      conditionResult = 0
+    REM If any condition is false, the whole thing is false
+    IF conditionResult = 0 THEN
+      allTrue = 0
     ENDIF
-    RETURN
-  ENDIF
+  LOOP
   
-  REM Single condition
-  GOSUB EvaluateSingleCondition
+  
+  conditionResult = allTrue
 RETURN
 
 EvaluateSingleCondition:
   REM Check for NOT prefix
   IF LEFT$(tempCondition$, 4) = "NOT " THEN
-    temp$ = tempCondition$
+    LOCAL notTemp$
+    notTemp$ = tempCondition$
     tempCondition$ = MID$(tempCondition$, 5)
     GOSUB EvaluateSingleCondition
     REM Invert result
@@ -1143,8 +1198,8 @@ EvaluateSingleCondition:
     ELSE
       conditionResult = 1
     ENDIF
-    tempCondition$ = temp$
-    RETURN
+    tempCondition$ = notTemp$
+    GOTO EvaluateSingleCondition_Done
   ENDIF
   
   REM Check for player.has X
@@ -1153,7 +1208,7 @@ EvaluateSingleCondition:
     objName$ = UCASE$(objName$)
     GOSUB CheckPlayerHas
     conditionResult = hasObj
-    RETURN
+    GOTO EvaluateSingleCondition_Done
   ENDIF
   
   REM Check for room=N
@@ -1164,7 +1219,7 @@ EvaluateSingleCondition:
     ELSE
       conditionResult = 0
     ENDIF
-    RETURN
+    GOTO EvaluateSingleCondition_Done
   ENDIF
   
   REM Check for flag.X
@@ -1172,11 +1227,13 @@ EvaluateSingleCondition:
     tempFlagName$ = MID$(tempCondition$, 6)
     GOSUB CheckFlag
     conditionResult = hasFlag
-    RETURN
+    GOTO EvaluateSingleCondition_Done
   ENDIF
   
   REM Unknown condition - default to false
   conditionResult = 0
+  
+EvaluateSingleCondition_Done:
 RETURN
 
 CheckPlayerHas:
@@ -1247,23 +1304,23 @@ ExecuteSingleAction:
   IF LEFT$(singleAction$, 6) = "SCORE " THEN
     gameScore = gameScore + VAL(MID$(singleAction$, 7))
     PRINT "[You scored "; MID$(singleAction$, 7); " points!]"
-    
-    REM Check for win condition
-    IF gameScore >= maxScore THEN
-      PRINT
-      tempKey$ = "win_game"
-      GOSUB GetMessage
-      IF msg$ <> "" THEN
-        PRINT msg$
-      ELSE
-        PRINT "Congratulations! You have won the game!"
-      ENDIF
-      PRINT
-      PRINT "Final score: "; gameScore; " out of "; maxScore
-      PRINT "Thanks for playing!"
-      END
-    ENDIF
     RETURN
+  ENDIF
+
+  REM Win game action: "win game"
+  IF singleAction$ = "WIN GAME" THEN
+    PRINT
+    tempKey$ = "win_game"
+    GOSUB GetMessage
+    IF msg$ <> "" THEN
+      PRINT msg$
+    ELSE
+      PRINT "Congratulations! You have won the game!"
+    ENDIF
+    PRINT
+    PRINT "Final score: "; gameScore; " out of "; maxScore
+    PRINT "Thanks for playing!"
+    END
   ENDIF
   
   REM Set flag: "set flag gate_used"
