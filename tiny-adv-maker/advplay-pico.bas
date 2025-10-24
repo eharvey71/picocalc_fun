@@ -7,14 +7,14 @@ OPTION DEFAULT INTEGER
 
 REM ===== GLOBAL ARRAY DECLARATIONS =====
 REM Heavily reduced sizes for PicoCalc heap constraints
-DIM rooms$(30, 4)
-DIM objects$(10, 5) LENGTH 80
-DIM inventory$(8)
-DIM responses$(40, 4) LENGTH 100
-DIM vocabulary$(20, 2) LENGTH 100
-DIM messages$(10, 2)
-DIM gameFlags$(20)
-DIM partthing$(6)
+DIM rooms$(30, 4) LENGTH 150
+DIM objects$(10, 5) LENGTH 150
+DIM inventory$(8) LENGTH 30
+DIM responses$(40, 4)
+DIM vocabulary$(20, 2) LENGTH 40
+DIM messages$(10, 2) LENGTH 150
+DIM gameFlags$(20) LENGTH 20
+DIM partthing$(6) LENGTH 200
 
 REM ===== GLOBAL VARIABLE DECLARATIONS =====
 REM Game state variables

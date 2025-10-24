@@ -11,8 +11,8 @@ DIM numRooms, numObjects, numResponses
 DIM theme$, minRooms, maxRooms
 
 ' Theme data for generator
-DIM themeNames$(5), themeAdj$(5), themeRooms$(5), themeDetails$(5)
-DIM themeObjects$(5), themeWeapons$(5), themeTitles$(5)
+DIM themeNames$(4), themeAdj$(4), themeRooms$(4), themeDetails$(4)
+DIM themeObjects$(4), themeWeapons$(4), themeTitles$(4)
 
 numRooms = 0
 numObjects = 0  
@@ -280,10 +280,23 @@ FOR i = 1 TO numRooms
   ' Connect rooms in a linear path with some branches
   IF i > 1 THEN
     rooms$(i, 3) = STR$(i-1) + ",0,0,0"  ' Connect north to previous
-    ' Update previous room to connect south
+    ' Update previous room to connect south (second position in N,S,E,W format)
     exits$ = rooms$(i-1, 3)
-    IF exits$ = "" THEN exits$ = "0,0,0,0"
-    rooms$(i-1, 3) = LEFT$(exits$, 2) + STR$(i) + MID$(exits$, 3)
+    IF exits$ = "" OR exits$ = "0,0,0,0" THEN
+      rooms$(i-1, 3) = "0," + STR$(i) + ",0,0"
+    ELSE
+      ' Parse existing exits and update south
+      commaPos1 = INSTR(exits$, ",")
+      IF commaPos1 > 0 THEN
+        northExit$ = LEFT$(exits$, commaPos1 - 1)
+        remainder$ = MID$(exits$, commaPos1 + 1, LEN(exits$) - commaPos1)
+        commaPos2 = INSTR(remainder$, ",")
+        IF commaPos2 > 0 THEN
+          eastWest$ = MID$(remainder$, commaPos2, LEN(remainder$) - commaPos2 + 1)
+          rooms$(i-1, 3) = northExit$ + "," + STR$(i) + eastWest$
+        END IF
+      END IF
+    END IF
   ELSE
     rooms$(i, 3) = "0,0,0,0"  ' First room
   END IF
@@ -306,7 +319,7 @@ GenerateObjects:
 objCount = 3 + INT(RND * 3)
 FOR i = 1 TO objCount
   numObjects = numObjects + 1
-  room = INT(RND * numRooms) + 1
+  roomNum = INT(RND * numRooms) + 1
   
   IF i = 1 THEN
     ' Always place a weapon early
@@ -316,7 +329,7 @@ FOR i = 1 TO objCount
   END IF
   
   objects$(numObjects, 0) = obj$
-  objects$(numObjects, 1) = STR$(room)
+  objects$(numObjects, 1) = STR$(roomNum)
   objects$(numObjects, 2) = obj$
   objects$(numObjects, 3) = "A " + obj$ + " lies here."
   objects$(numObjects, 4) = "takeable"
@@ -351,16 +364,21 @@ FUNCTION GenerateRoomDesc$(roomName$, theme$)
 END FUNCTION
 
 FUNCTION GetThemeIndex(theme$)
-  FOR i = 1 TO 5
+  FOR i = 0 TO 4
     IF themeNames$(i) = theme$ THEN
       GetThemeIndex = i
       EXIT FUNCTION
     END IF
   NEXT i
-  GetThemeIndex = 1
+  GetThemeIndex = 0
 END FUNCTION
 
 FUNCTION PickRandom$(list$)
+  IF list$ = "" THEN
+    PickRandom$ = ""
+    EXIT FUNCTION
+  END IF
+  
   items = 1
   FOR i = 1 TO LEN(list$)
     IF MID$(list$, i, 1) = "," THEN items = items + 1
@@ -382,54 +400,58 @@ FUNCTION PickRandom$(list$)
   NEXT i
   
   ' Return last item if we didn't find a comma
-  PickRandom$ = MID$(list$, start)
+  IF start <= LEN(list$) THEN
+    PickRandom$ = MID$(list$, start, LEN(list$) - start + 1)
+  ELSE
+    PickRandom$ = ""
+  END IF
 END FUNCTION
 
 InitializeThemes:
 ' Theme 1: Haunted
-themeNames$(1) = "haunted"
-themeAdj$(1) = "Dark,Creepy,Musty,Abandoned,Eerie,Cold,Shadowy"
-themeRooms$(1) = "Hallway,Bedroom,Kitchen,Basement,Attic,Library,Parlor,Study"
-themeDetails$(1) = "Strange noises echo here,Dust motes dance in pale light,An odd chill fills the air,Cobwebs hang from the corners"
-themeObjects$(1) = "candle,book,portrait,mirror,chair,chest"
-themeWeapons$(1) = "rusty sword,wooden stake,holy water,silver cross"
-themeTitles$(1) = "The Haunted Manor,Ghost House Mystery,Spirits of Ravenwood,The Cursed Estate"
+themeNames$(0) = "haunted"
+themeAdj$(0) = "Dark,Creepy,Musty,Abandoned,Eerie,Cold,Shadowy"
+themeRooms$(0) = "Hallway,Bedroom,Kitchen,Basement,Attic,Library,Parlor,Study"
+themeDetails$(0) = "Strange noises echo here,Dust motes dance in pale light,An odd chill fills the air,Cobwebs hang from the corners"
+themeObjects$(0) = "candle,book,portrait,mirror,chair,chest"
+themeWeapons$(0) = "rusty sword,wooden stake,holy water,silver cross"
+themeTitles$(0) = "The Haunted Manor,Ghost House Mystery,Spirits of Ravenwood,The Cursed Estate"
 
 ' Theme 2: Dungeon  
-themeNames$(2) = "dungeon"
-themeAdj$(2) = "Damp,Stone,Ancient,Narrow,Dark,Torch-lit"
-themeRooms$(2) = "Corridor,Chamber,Cell,Armory,Shrine,Vault,Tunnel"
-themeDetails$(2) = "Water drips from the ceiling,Moss grows on the walls,Strange symbols are carved here,Chains rattle in the distance"
-themeObjects$(2) = "torch,rope,coins,gems,scroll,bones"
-themeWeapons$(2) = "sword,dagger,magic wand,shield,mace"
-themeTitles$(2) = "Depths of Despair,The Lost Catacombs,Dragon's Lair,The Forgotten Dungeon"
+themeNames$(1) = "dungeon"
+themeAdj$(1) = "Damp,Stone,Ancient,Narrow,Dark,Torch-lit"
+themeRooms$(1) = "Corridor,Chamber,Cell,Armory,Shrine,Vault,Tunnel"
+themeDetails$(1) = "Water drips from the ceiling,Moss grows on the walls,Strange symbols are carved here,Chains rattle in the distance"
+themeObjects$(1) = "torch,rope,coins,gems,scroll,bones"
+themeWeapons$(1) = "sword,dagger,magic wand,shield,mace"
+themeTitles$(1) = "Depths of Despair,The Lost Catacombs,Dragon's Lair,The Forgotten Dungeon"
 
 ' Theme 3: Space
-themeNames$(3) = "space"
-themeAdj$(3) = "Sterile,Metallic,Humming,Bright,Curved,Silent"
-themeRooms$(3) = "Bridge,Quarters,Engine Room,Airlock,Lab,Cargo Bay"
-themeDetails$(3) = "Lights blink on control panels,Computers chirp softly,Air recyclers hum,Warning lights flash"
-themeObjects$(3) = "datapad,energy cell,circuit,scanner,tool"
-themeWeapons$(3) = "laser pistol,plasma rifle,force shield,stun baton"
-themeTitles$(3) = "Station Alpha Crisis,Lost in Space,The Derelict Ship,Cosmic Emergency"
+themeNames$(2) = "space"
+themeAdj$(2) = "Sterile,Metallic,Humming,Bright,Curved,Silent"
+themeRooms$(2) = "Bridge,Quarters,Engine Room,Airlock,Lab,Cargo Bay"
+themeDetails$(2) = "Lights blink on control panels,Computers chirp softly,Air recyclers hum,Warning lights flash"
+themeObjects$(2) = "datapad,energy cell,circuit,scanner,tool"
+themeWeapons$(2) = "laser pistol,plasma rifle,force shield,stun baton"
+themeTitles$(2) = "Station Alpha Crisis,Lost in Space,The Derelict Ship,Cosmic Emergency"
 
 ' Theme 4: Castle
-themeNames$(4) = "castle"
-themeAdj$(4) = "Grand,Stone,Noble,Ancient,Majestic,Royal"
-themeRooms$(4) = "Throne Room,Courtyard,Tower,Dungeon,Hall,Chapel,Armory"
-themeDetails$(4) = "Banners hang from the walls,Sunlight streams through windows,Guards patrol nearby,Servants bustle about"
-themeObjects$(4) = "crown,scepter,tapestry,chalice,armor,scroll"
-themeWeapons$(4) = "royal sword,knight's shield,crossbow,battle axe"
-themeTitles$(4) = "The Royal Quest,Castle of Secrets,The King's Challenge,Medieval Mystery"
+themeNames$(3) = "castle"
+themeAdj$(3) = "Grand,Stone,Noble,Ancient,Majestic,Royal"
+themeRooms$(3) = "Throne Room,Courtyard,Tower,Dungeon,Hall,Chapel,Armory"
+themeDetails$(3) = "Banners hang from the walls,Sunlight streams through windows,Guards patrol nearby,Servants bustle about"
+themeObjects$(3) = "crown,scepter,tapestry,chalice,armor,scroll"
+themeWeapons$(3) = "royal sword,knight's shield,crossbow,battle axe"
+themeTitles$(3) = "The Royal Quest,Castle of Secrets,The King's Challenge,Medieval Mystery"
 
 ' Theme 5: (duplicate for random selection)
-themeNames$(5) = "mystery"
-themeAdj$(5) = "Mysterious,Hidden,Secret,Strange,Unusual,Puzzling"
-themeRooms$(5) = "Room,Chamber,Hall,Study,Vault,Sanctum"
-themeDetails$(5) = "Something feels different here,You sense hidden secrets,The air tingles with magic,Ancient powers linger"
-themeObjects$(5) = "artifact,crystal,rune,tome,amulet,orb"
-themeWeapons$(5) = "enchanted blade,magic staff,crystal sword,power gem"
-themeTitles$(5) = "The Mystery Adventure,Secrets Revealed,The Hidden Truth,Ancient Mysteries"
+themeNames$(4) = "mystery"
+themeAdj$(4) = "Mysterious,Hidden,Secret,Strange,Unusual,Puzzling"
+themeRooms$(4) = "Room,Chamber,Hall,Study,Vault,Sanctum"
+themeDetails$(4) = "Something feels different here,You sense hidden secrets,The air tingles with magic,Ancient powers linger"
+themeObjects$(4) = "artifact,crystal,rune,tome,amulet,orb"
+themeWeapons$(4) = "enchanted blade,magic staff,crystal sword,power gem"
+themeTitles$(4) = "The Mystery Adventure,Secrets Revealed,The Hidden Truth,Ancient Mysteries"
 RETURN
 
 TestAdventure:

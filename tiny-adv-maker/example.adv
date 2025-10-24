@@ -40,19 +40,22 @@ take=take,get,pick up,grab
 examine=examine,look at,x,look
 search=search,look behind,investigate
 attack=attack,kill,fight,slay
-use=use,unlock
+read=view
 
 [RESPONSES]
 # Custom responses: trigger|condition|response|action
-examine gate||The gate has intricate carvings and a large keyhole. It looks like it needs a special key.|
+examine gate|room=2|The gate has intricate carvings and a large keyhole. It looks like it needs a special key.|
+open gate|NOT player.has key AND room=2|The gate can't be opened. It is locked and you need a key.|
 use key gate|player.has key AND room=2 AND NOT flag.gate_used|The key fits perfectly! The gate swings open to the west revealing a secret passage!|score 50,unlock west exit room 2 to 6,set flag gate_used
-unlock gate|NOT player.has key AND room=2|You need a key to unlock this gate.|
+unlock gate|NOT player.has key AND room=2 AND NOT flag.gate_used|You need a key to unlock this gate.|
+unlock gate|player.has key AND room=2 AND NOT flag.gate_used|Try using the key
+unlock gate key|player.has key AND room=2 AND NOT flag.gate_used|The key fits perfectly! The gate swings open to the west revealing a secret passage!|score 50,unlock west exit room 2 to 6,set flag gate_used
 examine beast|room=7|The shadow beast snarls at you with glowing red eyes. You'll need a weapon to fight it!|
 attack beast|player.has sword AND room=7|You swing your rusty sword at the shadow beast! The blade glows with ancient magic and the beast dissolves into mist!|score 50,remove shadow beast,unlock east exit room 7 to 8
 attack beast|NOT player.has sword AND room=7|You have no weapon to fight the beast! It swipes at you with shadowy claws.|
 fight beast|player.has sword AND room=7|You swing your rusty sword at the shadow beast! The blade glows with ancient magic and the beast dissolves into mist!|score 50,remove shadow beast,unlock east exit room 7 to 8
 search bookshelf|room=4|You carefully search behind the bookshelf and find a hidden lever! A secret door opens in the west wall.|score 50,unlock west exit room 4 to 9
-examine scroll|player.has scroll|The ancient scroll reveals the true history of this haunted castle and its treasure.|score 50
+read scroll|player.has scroll|The ancient scroll reveals the true history of this haunted castle and its treasure.|score 50
 take chalice||You pick up the magnificent golden chalice. You have found the castle's greatest treasure!|score 50
 
 [MESSAGES]
