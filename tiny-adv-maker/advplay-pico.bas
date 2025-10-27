@@ -10,7 +10,7 @@ REM Heavily reduced sizes for PicoCalc heap constraints
 DIM rooms$(30, 4) LENGTH 150
 DIM objects$(10, 5) LENGTH 150
 DIM inventory$(8) LENGTH 30
-DIM responses$(40, 4)
+DIM responses$(40, 3)
 DIM vocabulary$(20, 2) LENGTH 40
 DIM messages$(10, 2) LENGTH 150
 DIM gameFlags$(20) LENGTH 20
@@ -374,13 +374,13 @@ ParseResponses:
   REM PRINT "Response line parts: "; parts; " - "; dataLine$
   IF parts >= 3 THEN
     numResponses = numResponses + 1
-    responses$(numResponses, 1) = partthing$(0)
-    responses$(numResponses, 2) = partthing$(1)
-    responses$(numResponses, 3) = partthing$(2)
+    responses$(numResponses, 0) = partthing$(0)
+    responses$(numResponses, 1) = partthing$(1)
+    responses$(numResponses, 2) = partthing$(2)
     IF parts >= 4 THEN
-      responses$(numResponses, 4) = partthing$(3)
+      responses$(numResponses, 3) = partthing$(3)
     ELSE
-      responses$(numResponses, 4) = ""
+      responses$(numResponses, 3) = ""
     ENDIF
   ELSE
     PRINT "SKIPPED - Not enough parts!"
@@ -445,17 +445,38 @@ ShowRoom:
   PRINT
   PRINT "--- "; rooms$(currentRoom, 1); " ---"
   PRINT rooms$(currentRoom, 2)
-  PRINT
+
+  REM Show special room properties
+  IF rooms$(currentRoom, 4) <> "" THEN
+    special$ = UCASE$(rooms$(currentRoom, 4))
   
-  REM Show objects in room
-  found = 0
+    IF INSTR(special$, "DARK") > 0 THEN
+      PRINT "(It's dark and foreboding here.)"
+    ENDIF
+    IF INSTR(special$, "COLD") > 0 THEN
+      PRINT "(A chill runs down your spine.)"
+    ENDIF
+    IF INSTR(special$, "LOUD") > 0 THEN
+      PRINT "(The noise is deafening.)"
+    ENDIF
+    IF INSTR(special$, "TRAP") > 0 THEN
+      PRINT "(Something feels dangerous here.)"
+    ENDIF
+    PRINT
+  ENDIF
+  
   FOR i = 1 TO numObjects
     IF VAL(objects$(i, 1)) = currentRoom THEN
-      IF found = 0 THEN
-        PRINT "You can see:"
-        found = 1
+      props$ = UCASE$(objects$(i, 4))
+      IF INSTR(props$, "TAKEABLE") > 0 THEN
+        PRINT "You see a "; objects$(i, 2); " here."
+      ELSEIF INSTR(props$, "MONSTER") > 0 THEN
+        PRINT "A "; objects$(i, 2); " is here!"
+      ELSEIF INSTR(props$, "FIXED") > 0 THEN
+        PRINT "There is a "; objects$(i, 2); " here."
+      ELSE
+        PRINT "You notice a "; objects$(i, 2); "."
       ENDIF
-      PRINT "  "; objects$(i, 2)
     ENDIF
   NEXT i
   
@@ -546,7 +567,7 @@ GameLoop:
       anyConditionFailed = 0
       
       FOR i = 1 TO numResponses
-        tempCmd$ = UCASE$(responses$(i, 1))
+        tempCmd$ = UCASE$(responses$(i, 0))
         
         IF tempCmd$ <> "" THEN
             REM Check if trigger matches command (substring match)
@@ -562,7 +583,7 @@ GameLoop:
             
             
             REM Evaluate condition for this match
-            tempCondition$ = responses$(i, 2)
+            tempCondition$ = responses$(i, 1)
             GOSUB EvaluateCondition
             
             IF conditionResult = 1 THEN
@@ -583,9 +604,9 @@ GameLoop:
       REM Handle results
       IF found = 1 THEN
         REM Execute the best match
-        PRINT responses$(bestMatchIndex, 3)
-        IF responses$(bestMatchIndex, 4) <> "" THEN
-          tempAction$ = responses$(bestMatchIndex, 4)
+        PRINT responses$(bestMatchIndex, 2)
+        IF responses$(bestMatchIndex, 3) <> "" THEN
+          tempAction$ = responses$(bestMatchIndex, 3)
           GOSUB ExecuteActions
         ENDIF
       ELSEIF anyConditionFailed = 1 THEN
@@ -712,6 +733,10 @@ HandleCommand:
     RETURN
   ENDIF
 
+  PRINT "I don't understand that command"
+
+RETURN
+
 REM ===== OBJECT INTERACTION =====
 
 HandleTake:
@@ -723,7 +748,6 @@ HandleTake:
   IF LEFT$(command$, 4) = "GET " THEN
     objName$ = MID$(command$, 5)
   ENDIF
-    
   REM Check inventory limit
   IF inventoryCount >= 8 THEN
     PRINT "You are carrying too much!"
@@ -810,15 +834,15 @@ HandleExamine:
   REM Check for custom examine responses FIRST
   found = 0
   FOR i = 1 TO numResponses
-    tempCmd$ = UCASE$(responses$(i, 1))
+    tempCmd$ = UCASE$(responses$(i, 0))
     IF tempCmd$ <> "" THEN
       IF INSTR(command$, tempCmd$) > 0 THEN
-        tempCondition$ = responses$(i, 2)
+        tempCondition$ = responses$(i, 1)
         GOSUB EvaluateCondition
         IF conditionResult = 1 THEN
-          PRINT responses$(i, 3)
-          IF responses$(i, 4) <> "" THEN
-            tempAction$ = responses$(i, 4)
+          PRINT responses$(i, 2)
+          IF responses$(i, 3) <> "" THEN
+            tempAction$ = responses$(i, 3)
             GOSUB ExecuteActions
           ENDIF
           found = 1
@@ -848,6 +872,9 @@ HandleExamine:
     ENDIF
   NEXT i
   
+  REM ToDo:  Look for objects in the room description and respond
+  REM with a "you see nothing interesting with the {room object}"
+
   IF found = 0 THEN
     PRINT "You don't see that here."
   ENDIF
@@ -885,17 +912,17 @@ HandleUse:
   REM Check responses with current command
   found = 0
   FOR i = 1 TO numResponses
-    tempCmd$ = UCASE$(responses$(i, 1))
+    tempCmd$ = UCASE$(responses$(i, 0))
     
     IF tempCmd$ <> "" THEN
       IF INSTR(command$, tempCmd$) > 0 THEN
-        tempCondition$ = responses$(i, 2)
+        tempCondition$ = responses$(i, 1)
         GOSUB EvaluateCondition
         
         IF conditionResult = 1 THEN
-          PRINT responses$(i, 3)
-          IF responses$(i, 4) <> "" THEN
-            tempAction$ = responses$(i, 4)
+          PRINT responses$(i, 2)
+          IF responses$(i, 3) <> "" THEN
+            tempAction$ = responses$(i, 3)
             GOSUB ExecuteActions
           ENDIF
           found = 1
@@ -938,17 +965,16 @@ HandleAttack:
   REM Response table first - check responses with normalized command
   found = 0
   FOR i = 1 TO numResponses
-    respCmd$ = UCASE$(responses$(i, 1))
-    print "DEBUG HandleAttack: respCmd$ = "; respCmd$
+    respCmd$ = UCASE$(responses$(i, 0))
     IF respCmd$ <> "" THEN
       REM Substring match
       IF INSTR(command$, respCmd$) > 0 THEN
-        tempCondition$ = responses$(i, 2)
+        tempCondition$ = responses$(i, 1)
         GOSUB EvaluateCondition
         IF conditionResult = 1 THEN
-          IF responses$(i, 3) <> "" THEN PRINT responses$(i, 3)
-          IF responses$(i, 4) <> "" THEN
-            tempAction$ = responses$(i, 4)
+          IF responses$(i, 2) <> "" THEN PRINT responses$(i, 2)
+          IF responses$(i, 3) <> "" THEN
+            tempAction$ = responses$(i, 3)
             GOSUB ExecuteActions
           ENDIF
           found = 1
@@ -990,15 +1016,15 @@ HandleSearch:
   REM Check for custom search responses FIRST
   found = 0
   FOR i = 1 TO numResponses
-    tempCmd$ = UCASE$(responses$(i, 1))
+    tempCmd$ = UCASE$(responses$(i, 0))
     IF tempCmd$ <> "" THEN
       IF INSTR(command$, tempCmd$) > 0 THEN
-        tempCondition$ = responses$(i, 2)
+        tempCondition$ = responses$(i, 1)
         GOSUB EvaluateCondition
         IF conditionResult = 1 THEN
-          PRINT responses$(i, 3)
-          IF responses$(i, 4) <> "" THEN
-            tempAction$ = responses$(i, 4)
+          PRINT responses$(i, 2)
+          IF responses$(i, 3) <> "" THEN
+            tempAction$ = responses$(i, 3)
             GOSUB ExecuteActions
           ENDIF
           found = 1
@@ -1052,15 +1078,15 @@ HandleRead:
   REM Now check responses with the normalized command
   found = 0
   FOR i = 1 TO numResponses
-    tempCmd$ = UCASE$(responses$(i, 1))
+    tempCmd$ = UCASE$(responses$(i, 0))
     IF tempCmd$ <> "" THEN
       IF INSTR(command$, tempCmd$) > 0 THEN
-        tempCondition$ = responses$(i, 2)
+        tempCondition$ = responses$(i, 1)
         GOSUB EvaluateCondition
         IF conditionResult = 1 THEN
-          PRINT responses$(i, 3)
-          IF responses$(i, 4) <> "" THEN
-            tempAction$ = responses$(i, 4)
+          PRINT responses$(i, 2)
+          IF responses$(i, 3) <> "" THEN
+            tempAction$ = responses$(i, 3)
             GOSUB ExecuteActions
           ENDIF
           found = 1

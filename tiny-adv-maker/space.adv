@@ -27,28 +27,28 @@ maxscore=500
 
 [OBJECTS]
 keycard|1|security keycard|Red keycard marked AUTHORIZED.|takeable
-wrench|5|heavy wrench|A large wrench for repairs.|takeable,weapon
+wrench|5|heavy wrench|A large wrench for repairs.|takeable
 medkit|6|medical kit|Emergency medical supplies.|takeable
 datapad|8|personal datapad|Captain's log datapad.|takeable
 cell|3|power cell|A glowing power cell.|takeable
-pistol|15|plasma pistol|Standard issue pistol.|takeable,weapon
+pistol|15|plasma pistol|Standard issue pistol.|takeable
 alien|7|hostile alien|Terrifying razor claws.|monster,fixed
 aicore|14|AI core|The station's main AI.|fixed
-safe|13|captain's safe|Locked safe.|fixed,lockable
-codes|0|launch codes|Emergency escape pod codes.|takeable,treasure
+safe|13|captain's safe|Locked safe.|fixed
+codes|0|launch codes|Emergency escape pod codes.|takeable
 
 [VOCABULARY]
-north=n,north,go north
-south=s,south,go south
-east=e,east,go east
-west=w,west,go west
-take=take,get,pick up,grab
-examine=examine,look at,x,look
-use=use,activate
-attack=attack,kill,fight
-search=search,investigate
-repair=repair,fix
-read=read,view
+north=n,go north
+south=s,go south
+east=e,go east
+west=w,go west
+take=get,pick up,grab
+examine=look at,x,look
+use=activate
+attack=kill,fight
+search=investigate
+repair=fix
+read=view
 
 [RESPONSES]
 examine ai|room=14|AI: SYSTEMS CRITICAL.|
