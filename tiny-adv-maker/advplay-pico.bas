@@ -9,7 +9,7 @@ REM ===== GLOBAL ARRAY DECLARATIONS =====
 REM Lazy-loading approach: only keep active responses in memory
 DIM rooms$(20, 4) LENGTH 100
 DIM objects$(60, 5) LENGTH 100
-DIM inventory$(6) LENGTH 30
+DIM inventory$(15) LENGTH 30
 DIM responses$(5, 3)
 DIM vocabulary$(15, 2) LENGTH 40
 DIM messages$(8, 2) LENGTH 200
@@ -71,7 +71,7 @@ numObjects = 0
 totalResponses = 0
 
 REM ===== MAIN PROGRAM START =====
-PRINT "Enhanced with vocabulary & responses"
+PRINT "Welcome to the tiny adventure player"
 PRINT
 PRINT "Adventure file to load: ";
 LINE INPUT filename$
@@ -956,7 +956,12 @@ HandleTake:
   NEXT i
   
   IF found = 0 THEN
-    PRINT "You don't see that here."
+    REM Check if word appears in room description
+    IF INSTR(UCASE$(rooms$(currentRoom, 2)), objName$) > 0 THEN
+      PRINT "You can't take that."
+    ELSE
+      PRINT "You don't see that here."
+    ENDIF
   ENDIF
 RETURN
 

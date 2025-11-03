@@ -15,9 +15,9 @@ maxscore=500
 4|Bridge|Command center. The captain's chair sits empty.|2,6,0,0|
 5|Engineering|Massive engines rumble and hiss.|0,0,7,2|
 6|Med Bay|Medical equipment beeps softly.|4,8,0,0|
-7|Cargo Hold|Stacked crates. Something moves in shadows.|0,9,0,5|
+7|Cargo Hold|Stacked crates. Something moves in shadows.|0,0,0,5|
 8|Crew Quarters|Bunk beds and personal effects.|6,10,0,0|
-9|Science Lab|Broken equipment and scattered notes.|7,11,0,0|
+9|Science Lab|Broken equipment and scattered notes.|0,11,0,7|
 10|Reactor Core|The station glows with deadly radiation.|8,0,12,0|
 11|Observation Deck|Stars shine through the viewport.|9,13,0,0|
 12|Escape Pod Bay|Four pods remain. Your only way off.|0,0,14,10|
@@ -57,25 +57,24 @@ use keycard safe|player.has keycard AND room=13 AND NOT flag.safe_open|Safe clic
 use keycard safe|flag.safe_open AND room=13|The safe is already open.|
 examine safe|flag.safe_open AND room=13|Safe is open. Launch codes inside!|
 examine safe|NOT flag.safe_open AND room=13|Safe is locked.|
-take codes|flag.safe_open AND room=13|You take the launch codes!|score 50,set flag has_codes
 use cell core|player.has cell AND room=14 AND NOT flag.life_fixed|Life support stabilizes!|score 100,set flag life_fixed
 use cell core|flag.life_fixed AND room=14|The AI core already has power.|
 use cell ai|player.has cell AND room=14 AND NOT flag.life_fixed|Life support stabilizes!|score 100,set flag life_fixed
 use cell ai|flag.life_fixed AND room=14|The AI core already has power.|
-repair engine|player.has wrench AND room=5|Engines stabilize!|score 50,set flag engines_fixed
+repair engine|player.has wrench AND room=5|Engines stabilize!|score 100,set flag engines_fixed
 repair engine|flag.engines_fixed AND room=5|Engines are already humming along.|
 attack alien pistol|player.has pistol AND room=7 AND NOT flag.alien_dead|Plasma fire! Alien collapses!|score 100,remove hostile alien,unlock east exit room 7 to 9,set flag alien_dead
 attack alien pistol|player.has pistol AND room=7 AND flag.alien_dead|The alien is already dead.|
-attack alien wrench|player.has wrench AND room=7 AND NOT flag.tried_wrench|Alien blocks! Need better weapon.|score 25,set flag tried_wrench
+attack alien wrench|player.has wrench AND room=7 AND NOT flag.tried_wrench|Alien blocks! Need better weapon.|score 50,set flag tried_wrench
 attack alien wrench|player.has wrench AND room=7 AND flag.tried_wrench|The wrench still won't work.|
 attack alien|room=7|Attack the alien with what?|
-read datapad|player.has datapad AND NOT flag.read_datapad|LOG: Alien escaped. Keycard opens safe.|score 25,set flag read_datapad
+read datapad|player.has datapad AND NOT flag.read_datapad|LOG: Alien escaped. Keycard opens safe.|score 50,set flag read_datapad
 read datapad|flag.read_datapad|You've already read this.|
-use codes|player.has codes AND flag.engines_fixed AND flag.life_fixed AND room=12|Pod launches! Escaped!|score 75,win game
+use codes|player.has codes AND flag.engines_fixed AND flag.life_fixed AND room=12|Pod launches! Escaped!|score 100,win game
 use codes|player.has codes AND room=12|Pod refuses. Systems need repair!|
 examine alien|room=7|Obsidian skin. Glowing eyes. Dangerous.|
 search crates|room=7|Nothing useful in the crates.|
-use medkit|player.has medkit AND NOT flag.used_medkit|You heal your wounds.|score 20,set flag used_medkit
+use medkit|player.has medkit AND NOT flag.used_medkit|You heal your wounds.|score 50,set flag used_medkit
 use medkit|flag.used_medkit|The medkit is empty now.|
 examine reactor|room=10|WARNING: Radiation critical!|
 
