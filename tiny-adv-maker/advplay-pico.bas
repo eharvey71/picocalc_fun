@@ -6,15 +6,15 @@ REM Optimized for PicoMite memory constraints
 OPTION DEFAULT INTEGER
 
 REM ===== GLOBAL ARRAY DECLARATIONS =====
-REM Heavily reduced sizes for PicoCalc heap constraints
-DIM rooms$(30, 4) LENGTH 150
-DIM objects$(10, 5) LENGTH 150
-DIM inventory$(8) LENGTH 30
-DIM responses$(40, 3)
-DIM vocabulary$(20, 2) LENGTH 40
-DIM messages$(10, 2) LENGTH 150
-DIM gameFlags$(20) LENGTH 20
-DIM partthing$(6) LENGTH 200
+REM Lazy-loading approach: only keep active responses in memory
+DIM rooms$(20, 4) LENGTH 100
+DIM objects$(60, 5) LENGTH 100
+DIM inventory$(6) LENGTH 30
+DIM responses$(5, 3)
+DIM vocabulary$(15, 2) LENGTH 40
+DIM messages$(8, 2) LENGTH 200
+DIM gameFlags$(15) LENGTH 20
+DIM partthing$(6) LENGTH 120
 
 REM ===== GLOBAL VARIABLE DECLARATIONS =====
 REM Game state variables
@@ -22,13 +22,14 @@ DIM gameTitle$, gameAuthor$, gameVersion$
 DIM currentRoom, inventoryCount, gameScore, maxScore, startRoom
 DIM numResponses, numVocabulary, numMessages, numFlags
 DIM numRooms, numObjects
+DIM totalResponses REM Track total responses in file for stats
 
 REM File handling variables
-DIM filename$, dataLine$, section$, lineCount
+DIM filename$ LENGTH 50, dataLine$ LENGTH 255, section$ LENGTH 30, lineCount
 
 REM Parsing temp variables (reused throughout)
-DIM key$, value$, position, id, parts, startPos
-DIM trimmed$, temp$, s$, t$
+DIM key$ LENGTH 50, value$ LENGTH 200, position, id, parts, startPos
+DIM trimmed$ LENGTH 255, temp$ LENGTH 255, s$ LENGTH 100, t$ LENGTH 100
 
 REM Room display variables
 DIM exits$, exitNorth$, exitSouth$, exitEast$, exitWest$
@@ -67,6 +68,7 @@ numMessages = 0
 numFlags = 0
 numRooms = 0
 numObjects = 0
+totalResponses = 0
 
 REM ===== MAIN PROGRAM START =====
 PRINT "Enhanced with vocabulary & responses"
@@ -267,7 +269,8 @@ LoadAdventureFile:
           GOSUB ParseVocabulary
         ENDIF
         IF section$ = "RESPONSES" THEN
-          GOSUB ParseResponses
+          REM Count responses but don't load - loaded on demand per command
+          totalResponses = totalResponses + 1
         ENDIF
         IF section$ = "MESSAGES" THEN
           GOSUB ParseMessages
@@ -287,15 +290,16 @@ LoadAdventureFile:
   PRINT "Loaded "; STR$(lineCount); " total lines"
   PRINT "Rooms: "; STR$(numRooms)
   PRINT "Objects: "; STR$(numObjects)
-  PRINT "Responses: "; STR$(numResponses)
+  PRINT "Responses: "; STR$(totalResponses); " (loaded on demand)"
   PRINT "Vocabulary: "; STR$(numVocabulary)
   PRINT "Messages: "; STR$(numMessages)
   PRINT
 
   ' ==== Free parser temps to reclaim heap ====
-  ERASE partthing$
+  REM Keep partthing$ for lazy loading
   dataLine$ = "": trimmed$ = "": temp$ = "": s$ = "": t$ = ""
-  key$ = "": value$ = "": section$ = "": filename$ = ""    
+  key$ = "": value$ = "": section$ = ""
+  REM Keep filename$ for lazy loading    
 
 RETURN
 
@@ -373,14 +377,16 @@ ParseResponses:
   GOSUB SplitLine
   REM PRINT "Response line parts: "; parts; " - "; dataLine$
   IF parts >= 3 THEN
-    numResponses = numResponses + 1
-    responses$(numResponses, 0) = partthing$(0)
-    responses$(numResponses, 1) = partthing$(1)
-    responses$(numResponses, 2) = partthing$(2)
-    IF parts >= 4 THEN
-      responses$(numResponses, 3) = partthing$(3)
-    ELSE
-      responses$(numResponses, 3) = ""
+    IF numResponses < 5 THEN 
+      numResponses = numResponses + 1
+      responses$(numResponses, 0) = partthing$(0)
+      responses$(numResponses, 1) = partthing$(1)
+      responses$(numResponses, 2) = partthing$(2)
+      IF parts >= 4 THEN
+        responses$(numResponses, 3) = partthing$(3)
+      ELSE
+        responses$(numResponses, 3) = ""
+      ENDIF
     ENDIF
   ELSE
     PRINT "SKIPPED - Not enough parts!"
@@ -392,7 +398,7 @@ ParseMessages:
   position = INSTR(dataLine$, "=")
   IF position > 0 THEN
     numMessages = numMessages + 1
-    IF numMessages <= 8 THEN
+    IF numMessages <= 10 THEN
       messages$(numMessages, 0) = LEFT$(dataLine$, position - 1)
       messages$(numMessages, 1) = MID$(dataLine$, position + 1)
     ENDIF
@@ -428,6 +434,76 @@ SplitLine:
   ENDIF
 RETURN
 
+REM ===== LAZY LOADING SECTION =====
+
+LoadRoomResponses:
+  REM Clear current responses
+  numResponses = 0
+  FOR i = 0 TO 5
+    responses$(i, 0) = ""
+    responses$(i, 1) = ""
+    responses$(i, 2) = ""
+    responses$(i, 3) = ""
+  NEXT i
+  
+  REM Reopen file to scan for responses
+  OPEN filename$ FOR INPUT AS #2
+  LOCAL inResponseSection, scanLine$, scanTrimmed$, roomCondition$
+  inResponseSection = 0
+  
+  DO WHILE NOT EOF(#2)
+    LINE INPUT #2, scanLine$
+    
+    REM Manual trim
+    scanTrimmed$ = scanLine$
+    DO WHILE LEFT$(scanTrimmed$, 1) = " " AND LEN(scanTrimmed$) > 0
+      scanTrimmed$ = MID$(scanTrimmed$, 2)
+    LOOP
+    DO WHILE RIGHT$(scanTrimmed$, 1) = " " AND LEN(scanTrimmed$) > 0
+      scanTrimmed$ = LEFT$(scanTrimmed$, LEN(scanTrimmed$) - 1)
+    LOOP
+    
+    REM Check for section markers
+    IF LEFT$(scanTrimmed$, 1) = "[" AND RIGHT$(scanTrimmed$, 1) = "]" THEN
+      IF MID$(scanTrimmed$, 2, LEN(scanTrimmed$) - 2) = "RESPONSES" THEN
+        inResponseSection = 1
+      ELSE
+        inResponseSection = 0
+      ENDIF
+    ENDIF
+    
+    REM Parse responses in section
+    IF inResponseSection = 1 AND LEFT$(scanTrimmed$, 1) <> "#" AND scanTrimmed$ <> "" AND LEFT$(scanTrimmed$, 1) <> "[" THEN
+      dataLine$ = scanTrimmed$
+      GOSUB SplitLine
+      
+      IF parts >= 3 THEN
+        REM Check if this response is for current room or global
+        roomCondition$ = UCASE$(partthing$(1))
+        
+        REM Load if: no room condition OR matches current room
+        IF INSTR(roomCondition$, "ROOM=" + STR$(currentRoom)) > 0 OR INSTR(roomCondition$, "ROOM=") = 0 THEN
+          IF numResponses < 5 THEN
+            numResponses = numResponses + 1
+            responses$(numResponses, 0) = partthing$(0)
+            responses$(numResponses, 1) = partthing$(1)
+            responses$(numResponses, 2) = partthing$(2)
+            IF parts >= 4 THEN
+              responses$(numResponses, 3) = partthing$(3)
+            ELSE
+              responses$(numResponses, 3) = ""
+            ENDIF
+          ELSE
+            EXIT DO
+          ENDIF
+        ENDIF
+      ENDIF
+    ENDIF
+  LOOP
+  
+  CLOSE #2
+RETURN
+
 REM ===== GAME DISPLAY SECTION =====
 
 StartGame:
@@ -442,6 +518,9 @@ StartGame:
 RETURN
 
 ShowRoom:
+  REM Load responses for this room
+  GOSUB LoadRoomResponses
+  
   PRINT
   PRINT "--- "; rooms$(currentRoom, 1); " ---"
   PRINT rooms$(currentRoom, 2)
@@ -462,12 +541,12 @@ ShowRoom:
     IF INSTR(special$, "TRAP") > 0 THEN
       PRINT "(Something feels dangerous here.)"
     ENDIF
-    PRINT
   ENDIF
   
   FOR i = 1 TO numObjects
     IF VAL(objects$(i, 1)) = currentRoom THEN
       props$ = UCASE$(objects$(i, 4))
+      PRINT
       IF INSTR(props$, "TAKEABLE") > 0 THEN
         PRINT "You see a "; objects$(i, 2); " here."
       ELSEIF INSTR(props$, "MONSTER") > 0 THEN
@@ -550,6 +629,100 @@ ShowInventory:
   ENDIF
 RETURN
 
+REM ===== DYNAMIC RESPONSE LOADING =====
+
+LoadRelevantResponses:
+  REM Load only responses relevant to current command
+  REM This saves memory by not loading all responses at once
+  LOCAL responseCmd$, searchCmd$, loadLine$, inResponseSection
+  LOCAL responseCondition$, responseMsg$, responseAction$
+  LOCAL pipePos1, pipePos2, pipePos3
+  
+  REM Clear current responses
+  numResponses = 0
+  FOR i = 0 TO 5
+    responses$(i, 0) = ""
+    responses$(i, 1) = ""
+    responses$(i, 2) = ""
+    responses$(i, 3) = ""
+  NEXT i
+  
+  REM Open file and scan for matching responses
+  OPEN filename$ FOR INPUT AS #2
+  inResponseSection = 0
+  
+  DO WHILE NOT EOF(#2) AND numResponses < 6
+    LINE INPUT #2, loadLine$
+    
+    REM Trim line
+    DO WHILE LEFT$(loadLine$, 1) = " " AND LEN(loadLine$) > 0
+      loadLine$ = MID$(loadLine$, 2)
+    LOOP
+    DO WHILE RIGHT$(loadLine$, 1) = " " AND LEN(loadLine$) > 0
+      loadLine$ = LEFT$(loadLine$, LEN(loadLine$) - 1)
+    LOOP
+    
+    REM Check for section markers
+    IF LEFT$(loadLine$, 1) = "[" AND RIGHT$(loadLine$, 1) = "]" THEN
+      IF MID$(loadLine$, 2, LEN(loadLine$) - 2) = "RESPONSES" THEN
+        inResponseSection = 1
+      ELSE
+        inResponseSection = 0
+      ENDIF
+    ENDIF
+    
+    REM Process response lines
+    IF inResponseSection = 1 AND LEFT$(loadLine$, 1) <> "#" AND loadLine$ <> "" AND LEFT$(loadLine$, 1) <> "[" THEN
+      REM Parse response line: trigger|condition|response|action
+      pipePos1 = INSTR(loadLine$, "|")
+      IF pipePos1 > 0 THEN
+        responseCmd$ = LEFT$(loadLine$, pipePos1 - 1)
+        
+        REM Check if this response might match current command
+        REM Load if: 1) any word in trigger appears in command, or 2) first 5 responses as fallback
+        searchCmd$ = UCASE$(responseCmd$)
+        
+        IF INSTR(command$, searchCmd$) > 0 THEN
+          REM Parse full response
+          temp$ = MID$(loadLine$, pipePos1 + 1)
+          
+          pipePos2 = INSTR(temp$, "|")
+          IF pipePos2 > 0 THEN
+            responseCondition$ = LEFT$(temp$, pipePos2 - 1)
+            temp$ = MID$(temp$, pipePos2 + 1)
+            
+            pipePos3 = INSTR(temp$, "|")
+            IF pipePos3 > 0 THEN
+              responseMsg$ = LEFT$(temp$, pipePos3 - 1)
+              responseAction$ = MID$(temp$, pipePos3 + 1)
+            ELSE
+              responseMsg$ = temp$
+              responseAction$ = ""
+            ENDIF
+          ELSE
+            responseCondition$ = ""
+            responseMsg$ = temp$
+            responseAction$ = ""
+          ENDIF
+          
+          REM Store in array
+          IF numResponses < 5 THEN
+            numResponses = numResponses + 1
+            responses$(numResponses, 0) = responseCmd$
+            responses$(numResponses, 1) = responseCondition$
+            responses$(numResponses, 2) = responseMsg$
+            responses$(numResponses, 3) = responseAction$
+          ELSE
+            EXIT DO
+          ENDIF
+        ENDIF
+      ENDIF
+    ENDIF
+  LOOP
+  
+  CLOSE #2
+RETURN
+
 REM ===== GAME LOOP =====
 
 GameLoop:
@@ -559,6 +732,9 @@ GameLoop:
     
     IF command$ <> "" THEN
       command$ = NormalizeCommand$(command$)
+      
+      REM Load relevant responses for this command
+      GOSUB LoadRelevantResponses
       
       REM Check custom responses - find BEST match (most words wins)
       found = 0
