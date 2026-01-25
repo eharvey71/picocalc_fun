@@ -1,5 +1,4 @@
 REM Castle Dungeon for PicoCalc - V7
-REM Using CORRECT syntax from working examples
 REM Based on Compute's Gazette June 1984
 
 ' Game settings - Screen is 320x320
