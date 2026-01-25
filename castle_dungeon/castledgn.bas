@@ -1,4 +1,5 @@
-REM Castle Dungeon for PicoCalc - V1
+REM Castle Dungeon for PicoCalc - V7
+REM Using CORRECT syntax from working examples
 REM Based on Compute's Gazette June 1984
 
 ' Game settings - Screen is 320x320
@@ -49,6 +50,33 @@ DIM px, py, oldPx, oldPy
 
 ' Initialize
 GameStart:
+' Show title screen
+CLS
+BOX 0, 0, 320, 320, 1, RGB(0, 0, 0), RGB(0, 0, 0)
+
+TEXT 160, 30, "PICO CASTLE DUNGEON", "CM", 1, 2, RGB(255, 0, 0)
+TEXT 160, 55, "Inspired by Castle Dungeon", "CM", 1, 1, RGB(150, 150, 150)
+TEXT 160, 70, "Compute!'s Gazette, June 1984", "CM", 1, 1, RGB(150, 150, 150)
+
+TEXT 160, 100, "Find 3 bombs in 5 minutes!", "CM", 1, 1, RGB(255, 255, 0)
+
+TEXT 20, 130, "CONTROLS:", "LT", 1, 1, RGB(0, 255, 0)
+TEXT 20, 145, "Arrow keys or WASD - Move", "LT", 1, 1, RGB(255, 255, 255)
+TEXT 20, 160, "L - Levitation spell", "LT", 1, 1, RGB(255, 255, 255)
+TEXT 20, 175, "Q - Quit", "LT", 1, 1, RGB(255, 255, 255)
+
+TEXT 20, 200, "ITEMS:", "LT", 1, 1, RGB(0, 255, 0)
+TEXT 20, 215, "Red circles - Bombs (find 3)", "LT", 1, 1, RGB(255, 255, 255)
+TEXT 20, 230, "Yellow key - Opens doors", "LT", 1, 1, RGB(255, 255, 255)
+TEXT 20, 245, "Silver sword - Defeats beasts", "LT", 1, 1, RGB(255, 255, 255)
+
+TEXT 160, 280, "Press any key to start", "CM", 1, 1, RGB(255, 255, 0)
+
+' Wait for keypress
+DO WHILE INKEY$ = ""
+  PAUSE 50
+LOOP
+
 ' Reset game state
 bombs_found = 0
 has_key = 0
@@ -80,6 +108,7 @@ DO
   ' Check timer - calculate remaining time (TIMER is in milliseconds)
   IF INT(game_time - ((TIMER - start_time) / 1000)) <= 0 THEN
     ' Time's up - show message on black screen
+    PLAY TONE 200, 500, 50  ' Low sound for failure
     CLS
     TEXT 160, 120, "TIME'S UP!", "CM", 1, 1, RGB(255, 0, 0)
     TEXT 160, 140, "Castle destroyed!", "CM", 1, 1, RGB(255, 255, 255)
@@ -143,8 +172,10 @@ DO
           IF has_key = 1 THEN
             ' Open the door (remove it)
             objects(idx) = OBJ_NONE
+            PLAY TONE 700, 100, 50  ' Door opening sound
           ELSE
             ' Can't pass through - door is locked
+            PLAY TONE 300, 100, 50  ' Locked door sound
             ' Don't move, just exit
             PAUSE 150
             DO WHILE INKEY$ <> ""
@@ -157,8 +188,10 @@ DO
           IF levitating = 1 THEN
             ' Levitate over the pit - remove it after crossing
             objects(idx) = OBJ_NONE
+            PLAY TONE 900, 150, 50  ' Levitation sound
           ELSE
             ' Fall into pit - show message, reveal maze, play again
+            PLAY TONE 200, 500, 50  ' Falling sound
             CLS
             TEXT 160, 120, "GAME OVER!", "CM", 1, 1, RGB(255, 0, 0)
             TEXT 160, 140, "You fell in a pit!", "CM", 1, 1, RGB(255, 255, 255)
@@ -180,22 +213,26 @@ DO
           ' Pick up bomb
           objects(idx) = OBJ_NONE
           bombs_found = bombs_found + 1
-          ' TODO: Add sound/message
+          PLAY TONE 1000, 100, 50  ' High beep for bomb pickup
         ELSE IF objects(idx) = OBJ_KEY THEN
           ' Pick up key
           objects(idx) = OBJ_NONE
           has_key = 1
+          PLAY TONE 800, 100, 50  ' Medium beep for key
         ELSE IF objects(idx) = OBJ_SWORD THEN
           ' Pick up sword
           objects(idx) = OBJ_NONE
           has_sword = 1
+          PLAY TONE 600, 150, 50  ' Lower beep for sword
         ELSE IF objects(idx) = OBJ_BEAST THEN
           ' Hit a beast!
           IF has_sword = 1 THEN
             ' Kill the beast
             objects(idx) = OBJ_NONE
+            PLAY TONE 400, 200, 50  ' Low sound for beast death
           ELSE
             ' Game over - beast kills player
+            PLAY TONE 200, 500, 50  ' Low long sound for death
             CLS
             TEXT 160, 120, "GAME OVER!", "CM", 1, 1, RGB(255, 0, 0)
             TEXT 160, 140, "Beast got you!", "CM", 1, 1, RGB(255, 255, 255)
@@ -236,6 +273,15 @@ DO
         
         ' Check win condition
         IF bombs_found >= 3 THEN
+          ' Victory fanfare - ascending tones
+          PLAY TONE 500, 100, 50
+          PAUSE 100
+          PLAY TONE 600, 100, 50
+          PAUSE 100
+          PLAY TONE 700, 100, 50
+          PAUSE 100
+          PLAY TONE 800, 200, 50
+          
           CLS
           TEXT 160, 120, "YOU WIN!", "CM", 1, 1, RGB(0, 255, 0)
           TEXT 160, 140, "All bombs found!", "CM", 1, 1, RGB(255, 255, 255)
