@@ -3,6 +3,9 @@
 
 ---
 
+> **⚠️ Partially superseded (Sept 2026).** This guide was written against PicoMite BASIC 5.07. The device now runs **6.00.02RC23** at 200 MHz. Three claims below are no longer correct: single-line `IF…THEN…ELSE` *is* supported, SUB/FUNCTION definitions may appear anywhere in the program, and the RP2040 default clock is 200 MHz (not 133 MHz). See `CLAUDE.md` at the repo root for verified platform facts. The memory-discipline advice here remains sound.
+
+
 ## ⚙️ 1. Environment & Architecture Differences
 
 | Topic | MMB4L | PicoMite (PicoCalc) | Key Takeaway |
