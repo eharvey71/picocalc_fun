@@ -99,6 +99,52 @@ I2C keyboard disconnect errors.
 See `pico_serial_xmodem.md` — `picocom` + `lsx`/`lrx` over serial. On the device:
 `XMODEM RECEIVE "file.bas"`. Strip debug `PRINT`s before transferring; they cost heap.
 
+## Picking up later
+
+Open items, in the order they are worth doing. Each is self-contained — a new
+session can start from the entry alone.
+
+### 1. `advcreate.bas` cannot run on the device
+
+It is labelled "for PicoMite" but still carries the MMB4L-sized declarations:
+`DIM rooms$(50,6)`, `DIM objects$(50,5)`, `DIM responses$(100,4)`, none with
+`LENGTH`. At 256 bytes per element that is roughly 300 KB of string heap on a
+part that has 264 KB of SRAM in total, so it should fail at startup. It is the
+only tool here that cannot run at all.
+
+The fix is mechanical: add `LENGTH` to every string array and cut `CAP_*` sizes
+to what the `.adv` files actually use (the largest, `space.adv`, has 15 rooms,
+10 objects, 26 responses, 11 vocabulary entries, 5 messages). `advplay-pico.bas`
+is the worked example of the same exercise. Confirm the failure on-device first
+so the before/after is real.
+
+Also `TestAdventure:` prints "Feature not implemented in this version."
+
+### 2. Elite
+
+A wireframe Elite exists in progress outside this repo — it loads but is not
+functional. Bring that file into its own session.
+
+The thing that decides the approach: **PicoMite 6.x has a built-in 3D engine**,
+documented in `docs/3D_Graphics_User_Manual.md` in the `UKTailwind/PicoMite`
+source tree. `3D CREATE / CAMERA / ROTATE / SHOW / LIGHT / HIDE`, quaternion
+rotation, face-based rendering with depth sorting, surface normals for hidden
+face removal, and per-face line colours — which is wireframe. Up to 8 objects
+and 3 cameras. That is close to Elite's own ship renderer, running as firmware C
+rather than interpreted BASIC.
+
+Unverified and worth settling first: whether `3D` exists in **6.00.02RC23**, the
+version on this device. The docs come from the 6.03.x tree. Check at the prompt
+with `3D CAMERA 1, 500` — "Unknown command" means it is not in this build and
+the firmware needs updating before anything else is decided. No published
+figures for how many objects it sustains per second, so that needs measuring on
+hardware too.
+
+### 3. `advplay-mmbasic.bas`
+
+The MMB4L desktop build has diverged from the PicoMite one and is not maintained
+in step. Decide whether to keep it in sync or archive it.
+
 ## Testing
 
 There is no emulator or CI here. **Nothing in this repo can be run or verified in a dev
