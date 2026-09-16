@@ -38,6 +38,12 @@ CONST CELL  = 40
 CONST MAPH  = 240
 CONST CAVR  = 13
 
+' Longest tunnel, in lattice cells.  This is what keeps "within two caverns"
+' mean anything on screen: uncapped, a cavern alone in its row tunnelled clear
+' across the map, so two tunnels from the lair could land on the far side and
+' the bloodspots stopped pointing anywhere.
+CONST MAXTUN = 2
+
 ' ---- directions -------------------------------------------------------------
 CONST DUP = 0
 CONST DDN = 1
@@ -246,28 +252,40 @@ SUB BuildMaze
       FOR k = 1 TO COLS
         t = r * COLS + ((c + k) MOD COLS)
         IF cav(t) = 1 THEN
-          link(s, DRT) = t : tlen(s, DRT) = k
+          IF k <= MAXTUN OR t = s THEN
+            link(s, DRT) = t
+            tlen(s, DRT) = k
+          ENDIF
           EXIT FOR
         ENDIF
       NEXT k
       FOR k = 1 TO COLS
         t = r * COLS + ((c - k + COLS + COLS) MOD COLS)
         IF cav(t) = 1 THEN
-          link(s, DLF) = t : tlen(s, DLF) = k
+          IF k <= MAXTUN OR t = s THEN
+            link(s, DLF) = t
+            tlen(s, DLF) = k
+          ENDIF
           EXIT FOR
         ENDIF
       NEXT k
       FOR k = 1 TO ROWS
         t = ((r + k) MOD ROWS) * COLS + c
         IF cav(t) = 1 THEN
-          link(s, DDN) = t : tlen(s, DDN) = k
+          IF k <= MAXTUN OR t = s THEN
+            link(s, DDN) = t
+            tlen(s, DDN) = k
+          ENDIF
           EXIT FOR
         ENDIF
       NEXT k
       FOR k = 1 TO ROWS
         t = ((r - k + ROWS + ROWS) MOD ROWS) * COLS + c
         IF cav(t) = 1 THEN
-          link(s, DUP) = t : tlen(s, DUP) = k
+          IF k <= MAXTUN OR t = s THEN
+            link(s, DUP) = t
+            tlen(s, DUP) = k
+          ENDIF
           EXIT FOR
         ENDIF
       NEXT k
@@ -341,7 +359,7 @@ END SUB
 ' Places the hunter in a safe cavern that can actually reach the Wumpus.
 ' Returns 0 if this maze has no such cavern, so NewGame can build another.
 FUNCTION PlaceHunter()
-  LOCAL i, d, s, n, head, tail, cand
+  LOCAL i, d, s, n, head, tail, cand, reach
   FOR i = 0 TO NSLOT - 1
     dep(i) = -1
   NEXT i
@@ -360,6 +378,13 @@ FUNCTION PlaceHunter()
       ENDIF
     NEXT d
   LOOP
+
+  ' tail now counts every cavern reachable from the lair
+  reach = tail
+  IF reach * 10 < nCav * 6 THEN
+    PlaceHunter = 0
+    EXIT FUNCTION
+  ENDIF
 
   ' BFS is finished with q(), so reuse it to collect the candidates
   cand = 0
@@ -601,7 +626,7 @@ SUB FireArrow(d)
     outcome = OUT_WIN
   ELSE
     outcome = OUT_WUMP
-    SetMsg "An empty cavern. The Wumpus hears you."
+    SetMsg "You missed. Your one arrow is spent."
   ENDIF
 END SUB
 

@@ -8,6 +8,7 @@ the game depends on:
   - tunnel links are symmetric (A --right--> B implies B --left--> A)
   - self-looping tunnels occur, as the TI manual's "SURPRISE!" case requires
   - nearly every cavern is reachable from the Wumpus
+  - bloodspots stay near the lair on screen, not just in graph terms
   - the Wumpus is uniquely deducible from the bloodspot pattern alone,
     i.e. the game is solvable by reasoning rather than guessing
 
@@ -20,6 +21,7 @@ itself runs - that can only be checked on the PicoCalc.
 import random
 from collections import deque
 COLS,ROWS,NSLOT=8,6,48
+MAXTUN=2
 DUP,DDN,DLF,DRT=0,1,2,3
 
 def build(ncav):
@@ -31,18 +33,18 @@ def build(ncav):
     for s in range(NSLOT):
         if not cav[s]: continue
         c,r=s%COLS,s//COLS
-        for k in range(1,COLS+1):
-            t=r*COLS+((c+k)%COLS)
-            if cav[t]: link[s][DRT],tlen[s][DRT]=t,k; break
-        for k in range(1,COLS+1):
-            t=r*COLS+((c-k+2*COLS)%COLS)
-            if cav[t]: link[s][DLF],tlen[s][DLF]=t,k; break
-        for k in range(1,ROWS+1):
-            t=((r+k)%ROWS)*COLS+c
-            if cav[t]: link[s][DDN],tlen[s][DDN]=t,k; break
-        for k in range(1,ROWS+1):
-            t=((r-k+2*ROWS)%ROWS)*COLS+c
-            if cav[t]: link[s][DUP],tlen[s][DUP]=t,k; break
+        for d,(lim,idx) in {DRT:(COLS,lambda k:r*COLS+((c+k)%COLS)),
+                            DLF:(COLS,lambda k:r*COLS+((c-k+2*COLS)%COLS)),
+                            DDN:(ROWS,lambda k:((r+k)%ROWS)*COLS+c),
+                            DUP:(ROWS,lambda k:((r-k+2*ROWS)%ROWS)*COLS+c)}.items():
+            for k in range(1,lim+1):
+                t=idx(k)
+                if cav[t]:
+                    # MAXTUN: a tunnel only forms to a cavern within 2 cells.
+                    # t==s is the lone-in-row self loop, which is kept.
+                    if k<=MAXTUN or t==s:
+                        link[s][d],tlen[s][d]=t,k
+                    break
     return cav,link,tlen
 
 def bfs(link,start,maxd=None):
@@ -90,6 +92,19 @@ for trial in range(3000):
     stats['clear'].append(sum(1 for i in range(NSLOT) if cav[i] and i not in blood)/ncav)
 
 import statistics as st
+def wrapdist(a,b):
+    ca,ra=a%COLS,a//COLS; cb,rb=b%COLS,b//COLS
+    return max(min(abs(ca-cb),COLS-abs(ca-cb)), min(abs(ra-rb),ROWS-abs(ra-rb)))
+far=tot=0
+for _ in range(2000):
+    ncav=random.choice([32,24,16])
+    cav,link,tlen=build(ncav)
+    caverns=[i for i in range(NSLOT) if cav[i]]
+    w=random.choice(caverns)
+    for b in bfs(link,w,2):
+        tot+=1
+        if wrapdist(w,b)>=3: far+=1
+print(f"bloodspots 3+ cells from lair: {far/tot*100:.1f}%  (want well under 20%)")
 print(f"trials with asymmetric links : {stats['sym']}  (must be 0)")
 print(f"self-looping tunnels seen    : {stats['loops']}")
 print(f"mazes with no valid start    : {stats['nofit']} / 3000")
