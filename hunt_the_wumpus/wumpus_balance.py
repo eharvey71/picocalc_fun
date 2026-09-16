@@ -1,5 +1,5 @@
 """
-Balance harness for wip/wumpus.bas.
+Balance harness for wumpus.bas.
 
 There is no MMBasic emulator here, so this is a line-for-line Python port of
 the maze generator and warning logic in wumpus.bas.  It checks the properties

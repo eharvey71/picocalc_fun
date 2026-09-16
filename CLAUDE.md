@@ -70,21 +70,28 @@ I2C keyboard disconnect errors.
 | Path | What |
 |---|---|
 | `castle_dungeon/castledgn.bas` | Complete graphical maze game. The reference for this repo's graphics/audio idiom. |
+| `hunt_the_wumpus/wumpus.bas` | Complete graphical Wumpus hunt, following the TI-99/4A cartridge. |
+| `hunt_the_wumpus/wumpus_balance.py` | Python port of the maze generator. Checks link symmetry, reachability, bloodspot locality and that the Wumpus stays deducible. Run it after touching maze generation. |
 | `tiny-adv-maker/advplay-pico.bas` | Text-adventure engine, PicoMite build (heap-tuned, `LENGTH` everywhere). |
 | `tiny-adv-maker/advplay-mmbasic.bas` | Older MMB4L desktop build. Diverged; not maintained in step. |
 | `tiny-adv-maker/advcreate.bas` | Adventure authoring tool. **Still uses MMB4L-sized DIMs — will not fit RP2040 heap.** |
 | `tiny-adv-maker/*.adv` | Pipe-delimited adventure data. Sections: SETTINGS, ROOMS, OBJECTS, VOCABULARY, RESPONSES, MESSAGES. |
-| `wip/` | Prototypes + notes. `starfield.bas` and `wumpus.bas` are both complete and playable; `wumpus_balance.py` validates the maze generator off-device. |
+| `wip/` | Prototypes + notes. `starfield.bas` is complete. |
 | `pico_serial_xmodem.md` | macOS picocom + XMODEM transfer workflow. |
 
 ## Coding conventions in this repo
 
-- `OPTION DEFAULT INTEGER` at the top; `OPTION EXPLICIT` in newer files (`wip/wumpus.bas`).
+- `OPTION DEFAULT INTEGER` at the top; `OPTION EXPLICIT` in newer files (`hunt_the_wumpus/wumpus.bas`).
 - Screen geometry from `MM.HRES` / `MM.VRES`, not hardcoded, where practical.
 - Graphics: `BOX`, `TEXT x, y, s$, "LT"|"CM", font, scale, RGB(...)`.
 - Input: `INKEY$` polled in a `DO WHILE` loop, with a drain loop (`DO WHILE INKEY$ <> "" : LOOP`)
   after handling a key to swallow repeats.
 - `castledgn.bas` uses labels + `GOSUB`; `wumpus.bas` uses `SUB`. Both are fine — match the file.
+- Beware: MMBasic cannot call a FUNCTION as a bare statement, and `RGB()` has no `grey`.
+  Named colours are BLACK BLUE BROWN CERULEAN COBALT CYAN FUCHSIA GREEN LILAC MAGENTA
+  MIDGREEN MYRTLE RED RUST WHITE YELLOW.
+- `PLAY TONE` is `left, right, duration` — no volume argument. Volume is `PLAY VOLUME L, R`,
+  which resets to 100 on every RUN. Line width is ignored on diagonal `LINE`s.
 - One global `DIM` block at the top; no re-`DIM` inside routines.
 
 ## Getting code onto the device
