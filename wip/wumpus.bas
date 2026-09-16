@@ -76,6 +76,7 @@ DIM wumpSlot, pitA, pitB, nCav
 DIM pSlot                ' cavern the hunter is in (when inTun = 0)
 DIM inTun, tFrom, tDir, tStep, tTotal
 DIM armed
+DIM carried              ' 1 = bats put the hunter where they are now
 DIM hx, hy               ' hunter pixel position, set by HunterXY
 
 ' ---- game -------------------------------------------------------------------
@@ -94,7 +95,7 @@ CYEL  = RGB(255, 210, 0)
 CYELD = RGB(120, 95, 0)
 CWHT  = RGB(255, 255, 255)
 CBLK  = RGB(0, 0, 0)
-CBAT  = RGB(190, 190, 190)
+CBAT  = RGB(235, 235, 235)
 CARM  = RGB(0, 160, 255)
 CGRY  = RGB(120, 120, 120)
 
@@ -489,6 +490,7 @@ END SUB
 SUB ResolveLocation
   LOCAL guard
   guard = 0
+  carried = 0
   DO
     guard = guard + 1
     IF guard > 6 THEN
@@ -501,7 +503,11 @@ SUB ResolveLocation
     seen(pSlot) = 1
     IF pSlot = wumpSlot THEN
       outcome = OUT_WUMP
-      SetMsg "You blunder into the Wumpus' lair!"
+      IF carried = 1 THEN
+        SetMsg "The bats drop you in the Wumpus' lair!"
+      ELSE
+        SetMsg "You blunder into the Wumpus' lair!"
+      ENDIF
       EXIT SUB
     ENDIF
     IF pSlot = pitA OR pSlot = pitB THEN
@@ -524,6 +530,7 @@ SUB ResolveLocation
     SetMsg "The bats snatch you and fly off!"
     BatSound
     BatCarry
+    carried = 1
   LOOP
 END SUB
 
@@ -690,10 +697,16 @@ SUB DrawWumpusMark(cx, cy)
 END SUB
 
 SUB DrawBat(cx, cy)
-  LINE cx - 7, cy + 6, cx - 3, cy + 1, 1, CBAT
-  LINE cx - 3, cy + 1, cx, cy + 5, 1, CBAT
-  LINE cx, cy + 5, cx + 3, cy + 1, 1, CBAT
-  LINE cx + 3, cy + 1, cx + 7, cy + 6, 1, CBAT
+  LOCAL i
+  ' Drawn twice, a pixel apart: MMBasic ignores line width on diagonals, and
+  ' a single-pixel bat is far too easy to miss in a cavern with no red dot
+  ' behind it to catch the eye.
+  FOR i = 0 TO 1
+    LINE cx - 8, cy + 7 - i, cx - 3, cy + 1 - i, 1, CBAT
+    LINE cx - 3, cy + 1 - i, cx, cy + 5 - i, 1, CBAT
+    LINE cx, cy + 5 - i, cx + 3, cy + 1 - i, 1, CBAT
+    LINE cx + 3, cy + 1 - i, cx + 8, cy + 7 - i, 1, CBAT
+  NEXT i
 END SUB
 
 ' Draws the tunnel leaving cavern s in direction d, one lattice step at a
