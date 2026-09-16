@@ -725,12 +725,30 @@ FUNCTION Visible(s)
 END FUNCTION
 
 SUB DrawCavern(s)
-  LOCAL cx, cy, wc
+  LOCAL cx, cy, wc, d
   cx = (s MOD COLS) * CELL + CELL \ 2
   cy = (s \ COLS) * CELL + CELL \ 2
   wc = CBLUE
   IF slime(s) = 1 THEN wc = CGRN
   CIRCLE cx, cy, CAVR, 2, 1, wc
+
+  ' Stub each tunnel mouth so the ways out of a cavern can be seen, rather
+  ' than found by walking into rock.  The TI draws a cavern's openings the
+  ' same way - it is why its caverns look lobed rather than round.
+  FOR d = 0 TO 3
+    IF link(s, d) >= 0 THEN
+      SELECT CASE d
+        CASE DUP
+          LINE cx, cy - CAVR, cx, cy - CAVR - 5, 2, wc
+        CASE DDN
+          LINE cx, cy + CAVR, cx, cy + CAVR + 5, 2, wc
+        CASE DLF
+          LINE cx - CAVR, cy, cx - CAVR - 5, cy, 2, wc
+        CASE DRT
+          LINE cx + CAVR, cy, cx + CAVR + 5, cy, 2, wc
+      END SELECT
+    ENDIF
+  NEXT d
   IF revealAll = 1 AND (s = pitA OR s = pitB) THEN
     CIRCLE cx, cy, 10, 0, 1, CGRN, CGRN
   ENDIF
@@ -776,7 +794,7 @@ END SUB
 ' pieces the wrap-around needs.  Each step gets a kink so the tunnel reads
 ' as twisting rather than ruler-straight.
 SUB DrawTunnel(s, d)
-  LOCAL c, r, k, steps, ca, ra, cb, rb, xa, ya, xb, yb, mx, my, off
+  LOCAL c, r, k, steps, ca, ra, cb, rb, xa, ya, xb, yb, mx, my, off, wrapped
   c = s MOD COLS
   r = s \ COLS
   steps = tlen(s, d)
@@ -807,57 +825,57 @@ SUB DrawTunnel(s, d)
       CIRCLE xa, ya, 3, 0, 1, CBLUE, CBLUE
     ENDIF
 
-    ' pull the two cavern ends back to the cavern wall
-    IF k = 0 THEN
-      IF ya = yb THEN
-        IF xb > xa THEN
-          xa = xa + CAVR
-        ELSE
-          xa = xa - CAVR
-        ENDIF
-      ELSE
-        IF yb > ya THEN
-          ya = ya + CAVR
-        ELSE
-          ya = ya - CAVR
-        ENDIF
-      ENDIF
-    ENDIF
-    IF k = steps - 1 THEN
-      IF ya = yb THEN
-        IF xb > xa THEN
-          xb = xb - CAVR
-        ELSE
-          xb = xb + CAVR
-        ENDIF
-      ELSE
-        IF yb > ya THEN
-          yb = yb - CAVR
-        ELSE
-          yb = yb + CAVR
-        ENDIF
-      ENDIF
+    wrapped = 0
+    IF ABS(xa - xb) > CELL OR ABS(ya - yb) > CELL THEN
+      wrapped = 1
     ENDIF
 
-    IF ABS(xa - xb) > CELL OR ABS(ya - yb) > CELL THEN
+    ' Pull the two cavern ends back to the cavern wall.  Which way to pull
+    ' has to come from d, never from comparing the coordinates: across the
+    ' wrap seam the far cavern holds the larger coordinate while the tunnel
+    ' travels the other way, so the comparison trimmed the wrong end and the
+    ' line was drawn straight back through the cavern it had just left.
+    IF k = 0 THEN
+      SELECT CASE d
+        CASE DRT
+          xa = xa + CAVR
+        CASE DLF
+          xa = xa - CAVR
+        CASE DDN
+          ya = ya + CAVR
+        CASE DUP
+          ya = ya - CAVR
+      END SELECT
+    ENDIF
+    IF k = steps - 1 THEN
+      SELECT CASE d
+        CASE DRT
+          xb = xb - CAVR
+        CASE DLF
+          xb = xb + CAVR
+        CASE DDN
+          yb = yb - CAVR
+        CASE DUP
+          yb = yb + CAVR
+      END SELECT
+    ENDIF
+
+    IF wrapped = 1 THEN
       ' this step leaves one edge and returns on the other
-      IF xa <> xb THEN
-        IF xb < xa THEN
+      SELECT CASE d
+        CASE DRT
           LINE xa, ya, 319, ya, 2, CBLUE
           LINE 0, yb, xb, yb, 2, CBLUE
-        ELSE
+        CASE DLF
           LINE xa, ya, 0, ya, 2, CBLUE
           LINE 319, yb, xb, yb, 2, CBLUE
-        ENDIF
-      ELSE
-        IF yb < ya THEN
+        CASE DDN
           LINE xa, ya, xa, MAPH - 1, 2, CBLUE
           LINE xb, 0, xb, yb, 2, CBLUE
-        ELSE
+        CASE DUP
           LINE xa, ya, xa, 0, 2, CBLUE
           LINE xb, MAPH - 1, xb, yb, 2, CBLUE
-        ENDIF
-      ENDIF
+      END SELECT
     ELSE
       off = 4
       IF (k MOD 2) = 1 THEN off = -4
