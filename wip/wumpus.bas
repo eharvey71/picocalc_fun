@@ -134,6 +134,7 @@ END
 ' ============================================================================
 
 SUB ShowTitle
+  LOCAL k
   CLS CBLK
   TEXT 160, 70,  "HUNT THE WUMPUS", "CM", 1, 2, CYEL, CBLK
   TEXT 160, 110, "after the TI-99/4A original", "CM", 1, 1, CGRY, CBLK
@@ -143,7 +144,7 @@ SUB ShowTitle
   TEXT 160, 250, "Press any key", "CM", 1, 1, CGRN, CBLK
   Bugle
   DrainKeys
-  WaitAnyKey
+  k = WaitAnyKey()
 END SUB
 
 SUB ChooseDifficulty
@@ -643,7 +644,9 @@ SUB DrawMap
     NEXT i
   ENDIF
   FOR i = 0 TO NSLOT - 1
-    IF cav(i) = 1 AND Visible(i) = 1 THEN DrawCavern i
+    IF cav(i) = 1 AND Visible(i) = 1 THEN
+      DrawCavern i
+    ENDIF
   NEXT i
   DrawHunter 1
 END SUB
