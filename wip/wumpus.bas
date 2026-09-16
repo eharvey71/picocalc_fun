@@ -69,7 +69,6 @@ CONST OUT_QUIT = 4
 ' volume for its sweep and puts it back afterwards.
 CONST VOLFULL  = 100
 CONST VOLARROW = 30
-CONST VOLBAT   = 30
 
 ' Odds of getting past disturbed bats: 1 in BATCHANCE you creep by, otherwise
 ' they carry you off. The manual only says you "may" disturb them, so the
@@ -560,7 +559,6 @@ SUB ResolveLocation
     ENDIF
     IF batSeen(pSlot) = 0 THEN
       batSeen(pSlot) = 1
-      BatChirp
       SetMsg "Giant bats. They ignore you for now."
       EXIT SUB
     ENDIF
@@ -1147,17 +1145,6 @@ END SUB
 
 SUB Bonk
   PLAY TONE 130, 130, 90
-END SUB
-
-' Heard the first time a cavern's bats are discovered, when they notice you
-' but leave you alone.
-SUB BatChirp
-  PLAY VOLUME VOLBAT, VOLBAT
-  PLAY TONE 1900, 1900, 18
-  PAUSE 45
-  PLAY TONE 2300, 2300, 18
-  PAUSE 45
-  PLAY VOLUME VOLFULL, VOLFULL
 END SUB
 
 SUB BatSound
