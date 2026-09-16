@@ -87,7 +87,7 @@ DIM msg$
 DIM state
 
 ' ---- colours ----------------------------------------------------------------
-DIM CBLUE, CGRN, CRED, CYEL, CYELD, CWHT, CBLK, CBAT, CARM, CGRY
+DIM CBLUE, CGRN, CRED, CYEL, CYELD, CWHT, CBLK, CBAT, CARM, CGRY, CTUN
 CBLUE = RGB(60, 90, 255)
 CGRN  = RGB(0, 200, 70)
 CRED  = RGB(230, 30, 30)
@@ -98,6 +98,7 @@ CBLK  = RGB(0, 0, 0)
 CBAT  = RGB(235, 235, 235)
 CARM  = RGB(0, 160, 255)
 CGRY  = RGB(120, 120, 120)
+CTUN  = RGB(25, 40, 110)
 
 RANDOMIZE TIMER
 tallyWin = 0 : tallyWump = 0 : tallyPit = 0
@@ -637,19 +638,47 @@ END SUB
 SUB DrawMap
   LOCAL i, d
   BOX 0, 0, 320, MAPH, 0, CBLK, CBLK
-  IF optExpress = 0 OR revealAll = 1 THEN
+
+  ' Tunnel visibility follows tseen alone.  It must NOT also depend on the
+  ' owning cavern being visible: a tunnel is stored against whichever end
+  ' sits left of or above the other, so walking north or west into a cavern
+  ' you have not reached yet left the tunnel owned by an unvisited cavern -
+  ' and it was never drawn, stranding the hunter in blank space.
+  IF revealAll = 1 THEN
     FOR i = 0 TO NSLOT - 1
-      IF cav(i) = 1 AND Visible(i) = 1 THEN
+      IF cav(i) = 1 THEN
         FOR d = 0 TO 3
           IF d = DRT OR d = DDN THEN
-            IF link(i, d) >= 0 AND (tseen(i, d) = 1 OR revealAll = 1) THEN
+            IF link(i, d) >= 0 THEN
               DrawTunnel i, d
             ENDIF
           ENDIF
         NEXT d
       ENDIF
     NEXT i
+  ELSEIF optExpress = 0 THEN
+    ' EXPRESS maps the caverns you reach but never the tunnels between them,
+    ' so it draws none of this at all.
+    IF optBlind = 1 THEN
+      ' BLINDFOLD shows only the tunnel the hunter is standing in
+      IF inTun = 1 THEN
+        DrawTunnel tFrom, tDir
+      ENDIF
+    ELSE
+      FOR i = 0 TO NSLOT - 1
+        IF cav(i) = 1 THEN
+          FOR d = 0 TO 3
+            IF d = DRT OR d = DDN THEN
+              IF link(i, d) >= 0 AND tseen(i, d) = 1 THEN
+                DrawTunnel i, d
+              ENDIF
+            ENDIF
+          NEXT d
+        ENDIF
+      NEXT i
+    ENDIF
   ENDIF
+
   FOR i = 0 TO NSLOT - 1
     IF cav(i) = 1 AND Visible(i) = 1 THEN
       DrawCavern i
@@ -849,7 +878,7 @@ SUB DrawHunter(bright)
     IF bright = 0 THEN hc = CYELD
   ENDIF
   IF inTun = 1 THEN
-    CIRCLE x, y, 9, 1, 1, CBLUE
+    CIRCLE x, y, 8, 0, 1, CTUN, CTUN
   ENDIF
   CIRCLE x, y - 6, 2, 0, 1, hc, hc
   LINE x, y - 4, x, y + 2, 1, hc
