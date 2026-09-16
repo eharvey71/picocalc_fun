@@ -140,12 +140,23 @@ PicoMite ever built and proves nothing. Subcommands, from `graphics/Draw3D.c`:
 CREATE, CAMERA, ROTATE, SHOW, WRITE, LIGHT, SET FLAGS, HIDE, HIDE ALL, RESTORE,
 RESET, DIAGNOSE, CLOSE, CLOSE ALL.
 
-The real test on this device is `Draw3D CAMERA 1, 500`. Untested so far.
-Draw3D is absent only from the PICOMITEMIN build, and the 6.03.00 release notes
-mention it only in that list, so it predates 6.03.00 — but whether it reaches
-back to 6.00.02RC23 is unknown, and updating firmware may be step one either
-way. No published figures for how many objects it sustains per second, so that
-needs measuring on hardware too.
+**Confirmed present on this device.** `Draw3D CAMERA 1, 500` at the prompt on
+6.00.02RC23 returns no error, so the engine is in this build and no firmware
+update is needed to start.
+
+Two more traps in the 3D manual, beyond the `3D` / `Draw3D` naming:
+
+- Its rotating-cube example calls `RESTORE` a second time before reading the
+  face indices. DATA is collected in program order across the whole file, so
+  that re-reads the vertex coordinates into `faces()`. Read straight through
+  with a single `RESTORE` at the top instead.
+- Winding decides the surface normals, and normals decide hidden-face removal.
+  Getting it wrong on a hand-built hull is hard to debug blind, so start from
+  the cube's known-good face topology and move the vertices.
+
+`wip/elite3d_probe.bas` measures what is still unknown: frames per second for
+1, 2, 4 and 8 wireframe ships. Run it before designing anything, since the
+answer decides whether ships are drawn by the engine or have to be faked.
 
 ### 3. `advplay-mmbasic.bas`
 
