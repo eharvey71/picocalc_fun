@@ -127,18 +127,25 @@ functional. Bring that file into its own session.
 
 The thing that decides the approach: **PicoMite 6.x has a built-in 3D engine**,
 documented in `docs/3D_Graphics_User_Manual.md` in the `UKTailwind/PicoMite`
-source tree. `3D CREATE / CAMERA / ROTATE / SHOW / LIGHT / HIDE`, quaternion
-rotation, face-based rendering with depth sorting, surface normals for hidden
-face removal, and per-face line colours — which is wireframe. Up to 8 objects
-and 3 cameras. That is close to Elite's own ship renderer, running as firmware C
-rather than interpreted BASIC.
+source tree. Quaternion rotation, face-based rendering with depth sorting,
+surface normals for hidden face removal, and per-face line colours — which is
+wireframe. Up to 8 objects and 3 cameras. That is close to Elite's own ship
+renderer, running as firmware C rather than interpreted BASIC.
 
-Unverified and worth settling first: whether `3D` exists in **6.00.02RC23**, the
-version on this device. The docs come from the 6.03.x tree. Check at the prompt
-with `3D CAMERA 1, 500` — "Unknown command" means it is not in this build and
-the firmware needs updating before anything else is decided. No published
-figures for how many objects it sustains per second, so that needs measuring on
-hardware too.
+**The command is `Draw3D`, not `3D`.** The manual writes every example as
+`3D CREATE`, `3D CAMERA` and so on, but the only token registered in
+`AllCommands.h` is `Draw3D` (and `DRAW3D(` for the function) — there is no `3D`
+keyword in any build. So `3D CAMERA 1, 500` returns "Unknown command" on every
+PicoMite ever built and proves nothing. Subcommands, from `graphics/Draw3D.c`:
+CREATE, CAMERA, ROTATE, SHOW, WRITE, LIGHT, SET FLAGS, HIDE, HIDE ALL, RESTORE,
+RESET, DIAGNOSE, CLOSE, CLOSE ALL.
+
+The real test on this device is `Draw3D CAMERA 1, 500`. Untested so far.
+Draw3D is absent only from the PICOMITEMIN build, and the 6.03.00 release notes
+mention it only in that list, so it predates 6.03.00 — but whether it reaches
+back to 6.00.02RC23 is unknown, and updating firmware may be step one either
+way. No published figures for how many objects it sustains per second, so that
+needs measuring on hardware too.
 
 ### 3. `advplay-mmbasic.bas`
 
