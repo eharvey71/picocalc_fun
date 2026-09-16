@@ -601,7 +601,7 @@ SUB FireArrow(d)
     outcome = OUT_WIN
   ELSE
     outcome = OUT_WUMP
-    SetMsg "Empty cavern. The Wumpus hears, and comes."
+    SetMsg "An empty cavern. The Wumpus hears you."
   ENDIF
 END SUB
 
