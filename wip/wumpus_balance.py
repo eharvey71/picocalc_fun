@@ -8,6 +8,7 @@ the game depends on:
   - tunnel links are symmetric (A --right--> B implies B --left--> A)
   - self-looping tunnels occur, as the TI manual's "SURPRISE!" case requires
   - nearly every cavern is reachable from the Wumpus
+  - no two tunnels cross at the same lattice slot
   - bloodspots stay near the lair on screen, not just in graph terms
   - the Wumpus is uniquely deducible from the bloodspot pattern alone,
     i.e. the game is solvable by reasoning rather than guessing
@@ -45,6 +46,23 @@ def build(ncav):
                     if k<=MAXTUN or t==s:
                         link[s][d],tlen[s][d]=t,k
                     break
+    # A two-cell tunnel passes through one empty lattice slot. Two of them
+    # sharing that slot cross on screen and read as a junction the hunter
+    # cannot turn at, so each slot is given to a single tunnel.
+    OPP={DUP:DDN,DDN:DUP,DLF:DRT,DRT:DLF}
+    claimed=set()
+    for s in range(NSLOT):
+        if not cav[s]: continue
+        c,r=s%COLS,s//COLS
+        for d in (DRT,DDN):
+            n=link[s][d]
+            if n<0 or tlen[s][d]!=2: continue
+            mid = r*COLS+((c+1)%COLS) if d==DRT else ((r+1)%ROWS)*COLS+c
+            if mid in claimed:
+                link[s][d]=-1; tlen[s][d]=0
+                link[n][OPP[d]]=-1; tlen[n][OPP[d]]=0
+            else:
+                claimed.add(mid)
     return cav,link,tlen
 
 def bfs(link,start,maxd=None):

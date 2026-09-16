@@ -85,6 +85,7 @@ DIM slime(47)            ' 1 = green walls (within one cavern of a pit)
 DIM seen(47)             ' 1 = the hunter has been here
 DIM batAt(47)            ' 1 = bats live here
 DIM batSeen(47)          ' 1 = the hunter has seen these bats
+DIM used(47)             ' scratch: lattice slots already owned by a tunnel
 DIM q(47)                ' scratch queue, also used to collect candidates
 DIM dep(47)              ' scratch BFS depth
 
@@ -221,7 +222,7 @@ SUB NewGame
 END SUB
 
 SUB BuildMaze
-  LOCAL i, d, s, c, r, k, t, placed
+  LOCAL i, d, s, c, r, k, t, placed, n, midslot
 
   FOR i = 0 TO NSLOT - 1
     cav(i) = 0 : blood(i) = 0 : slime(i) = 0 : seen(i) = 0
@@ -301,6 +302,42 @@ SUB BuildMaze
           EXIT FOR
         ENDIF
       NEXT k
+    ENDIF
+  NEXT s
+
+  ' A two-cell tunnel runs through one empty lattice slot on its way. Two of
+  ' them can pass through the SAME slot - they cross on screen and read as a
+  ' four-way junction, but they are separate tunnels and the hunter cannot
+  ' turn at one. Give every such slot to a single tunnel, dropping the link
+  ' that arrives second. Both ends are cleared together so the graph stays
+  ' symmetric.
+  FOR i = 0 TO NSLOT - 1
+    used(i) = 0
+  NEXT i
+  FOR s = 0 TO NSLOT - 1
+    IF cav(s) = 1 THEN
+      c = s MOD COLS
+      r = s \ COLS
+      FOR d = 0 TO 3
+        IF d = DRT OR d = DDN THEN
+          n = link(s, d)
+          IF n >= 0 AND tlen(s, d) = 2 THEN
+            IF d = DRT THEN
+              midslot = r * COLS + ((c + 1) MOD COLS)
+            ELSE
+              midslot = ((r + 1) MOD ROWS) * COLS + c
+            ENDIF
+            IF used(midslot) = 1 THEN
+              link(s, d) = -1
+              tlen(s, d) = 0
+              link(n, Opposite(d)) = -1
+              tlen(n, Opposite(d)) = 0
+            ELSE
+              used(midslot) = 1
+            ENDIF
+          ENDIF
+        ENDIF
+      NEXT d
     ENDIF
   NEXT s
 
