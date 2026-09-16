@@ -87,7 +87,7 @@ DIM msg$
 DIM state
 
 ' ---- colours ----------------------------------------------------------------
-DIM CBLUE, CGRN, CRED, CYEL, CYELD, CWHT, CBLK, CBAT, CARM, CGRY, CTUN
+DIM CBLUE, CGRN, CRED, CYEL, CYELD, CWHT, CBLK, CBAT, CARM, CGRY, CTUN, CWUMP
 CBLUE = RGB(60, 90, 255)
 CGRN  = RGB(0, 200, 70)
 CRED  = RGB(230, 30, 30)
@@ -99,6 +99,7 @@ CBAT  = RGB(235, 235, 235)
 CARM  = RGB(0, 160, 255)
 CGRY  = RGB(120, 120, 120)
 CTUN  = RGB(25, 40, 110)
+CWUMP = RGB(255, 0, 255)
 
 RANDOMIZE TIMER
 tallyWin = 0 : tallyWump = 0 : tallyPit = 0
@@ -600,7 +601,7 @@ SUB FireArrow(d)
     outcome = OUT_WIN
   ELSE
     outcome = OUT_WUMP
-    SetMsg "Your arrow hits rock. The Wumpus wakes."
+    SetMsg "Empty cavern. The Wumpus hears, and comes."
   ENDIF
 END SUB
 
@@ -706,23 +707,30 @@ SUB DrawCavern(s)
   IF slime(s) = 1 THEN wc = CGRN
   CIRCLE cx, cy, CAVR, 2, 1, wc
   IF revealAll = 1 AND (s = pitA OR s = pitB) THEN
-    CIRCLE cx, cy, 8, 0, 1, CGRN, CGRN
-  ENDIF
-  IF blood(s) = 1 THEN
-    CIRCLE cx, cy, 5, 0, 1, CRED, CRED
+    CIRCLE cx, cy, 10, 0, 1, CGRN, CGRN
   ENDIF
   IF revealAll = 1 AND s = wumpSlot THEN
     DrawWumpusMark cx, cy
+  ELSE
+    IF blood(s) = 1 THEN
+      CIRCLE cx, cy, 5, 0, 1, CRED, CRED
+    ENDIF
   ENDIF
   IF batSeen(s) = 1 OR (revealAll = 1 AND batAt(s) = 1) THEN
     DrawBat cx, cy
   ENDIF
 END SUB
 
+' The old marker was a red disc of radius 6 sitting on a bloodspot of radius
+' 5 - same colour, one pixel bigger, completely unfindable on the reveal map.
+' Magenta appears nowhere else on the map, so the lair cannot be missed.
 SUB DrawWumpusMark(cx, cy)
-  CIRCLE cx, cy, 6, 0, 1, CRED, CRED
-  LINE cx - 5, cy + 5, cx - 2, cy + 1, 1, CBLK
-  LINE cx + 5, cy + 5, cx + 2, cy + 1, 1, CBLK
+  CIRCLE cx, cy, 7, 0, 1, CWUMP, CWUMP
+  CIRCLE cx - 3, cy - 2, 1, 0, 1, CBLK, CBLK
+  CIRCLE cx + 3, cy - 2, 1, 0, 1, CBLK, CBLK
+  LINE cx - 4, cy + 3, cx + 4, cy + 3, 1, CBLK
+  LINE cx - 4, cy + 1, cx - 4, cy + 3, 1, CBLK
+  LINE cx + 4, cy + 1, cx + 4, cy + 3, 1, CBLK
 END SUB
 
 SUB DrawBat(cx, cy)
