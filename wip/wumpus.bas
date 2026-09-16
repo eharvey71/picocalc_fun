@@ -63,6 +63,13 @@ CONST OUT_WUMP = 2
 CONST OUT_PIT  = 3
 CONST OUT_QUIT = 4
 
+' PLAY TONE carries no volume argument - PLAY VOLUME sets it globally, and it
+' snaps back to 100 every time the program is RUN. The arrow is the highest
+' pitched sound in the game and was far and away the loudest, so it drops the
+' volume for its sweep and puts it back afterwards.
+CONST VOLFULL  = 100
+CONST VOLARROW = 30
+
 ' ---- maze -------------------------------------------------------------------
 DIM cav(47)              ' 1 = this lattice slot holds a cavern
 DIM link(47, 3)          ' cavern reached by leaving in direction d, -1 = rock
@@ -1145,10 +1152,12 @@ END SUB
 
 SUB ArrowSound
   LOCAL i
+  PLAY VOLUME VOLARROW, VOLARROW
   FOR i = 0 TO 8
     PLAY TONE 2600 - i * 220, 2600 - i * 220, 25
     PAUSE 28
   NEXT i
+  PLAY VOLUME VOLFULL, VOLFULL
 END SUB
 
 SUB Bugle
