@@ -726,6 +726,44 @@ SUB DrawTunnel(s, d)
     xb = cb * CELL + CELL \ 2
     yb = rb * CELL + CELL \ 2
 
+    ' every lattice point along the way is a place the hunter can stand, so
+    ' mark it - otherwise being mid-tunnel looks like being nowhere at all
+    IF k >= 1 THEN
+      CIRCLE xa, ya, 3, 0, 1, CBLUE, CBLUE
+    ENDIF
+
+    ' pull the two cavern ends back to the cavern wall
+    IF k = 0 THEN
+      IF ya = yb THEN
+        IF xb > xa THEN
+          xa = xa + CAVR
+        ELSE
+          xa = xa - CAVR
+        ENDIF
+      ELSE
+        IF yb > ya THEN
+          ya = ya + CAVR
+        ELSE
+          ya = ya - CAVR
+        ENDIF
+      ENDIF
+    ENDIF
+    IF k = steps - 1 THEN
+      IF ya = yb THEN
+        IF xb > xa THEN
+          xb = xb - CAVR
+        ELSE
+          xb = xb + CAVR
+        ENDIF
+      ELSE
+        IF yb > ya THEN
+          yb = yb - CAVR
+        ELSE
+          yb = yb + CAVR
+        ENDIF
+      ENDIF
+    ENDIF
+
     IF ABS(xa - xb) > CELL OR ABS(ya - yb) > CELL THEN
       ' this step leaves one edge and returns on the other
       IF xa <> xb THEN
@@ -746,8 +784,8 @@ SUB DrawTunnel(s, d)
         ENDIF
       ENDIF
     ELSE
-      off = 6
-      IF (k MOD 2) = 1 THEN off = -6
+      off = 4
+      IF (k MOD 2) = 1 THEN off = -4
       mx = (xa + xb) \ 2
       my = (ya + yb) \ 2
       IF ya = yb THEN
@@ -797,6 +835,9 @@ SUB DrawHunter(bright)
     hc = CYEL
     IF bright = 0 THEN hc = CYELD
   ENDIF
+  IF inTun = 1 THEN
+    CIRCLE x, y, 9, 1, 1, CBLUE
+  ENDIF
   CIRCLE x, y - 6, 2, 0, 1, hc, hc
   LINE x, y - 4, x, y + 2, 1, hc
   LINE x - 4, y - 1, x + 4, y - 1, 1, hc
@@ -809,7 +850,11 @@ SUB DrawStatus
   BOX 0, MAPH, 320, 320 - MAPH, 0, CBLK, CBLK
   LINE 0, MAPH, 319, MAPH, 1, CGRY
   TEXT 4, MAPH + 8, msg$, "LT", 1, 1, CWHT, CBLK
-  m$ = MazeName$() + "  " + OptName$()
+  IF inTun = 1 THEN
+    m$ = "TUNNEL  step " + STR$(tStep) + " of " + STR$(tTotal)
+  ELSE
+    m$ = MazeName$() + "  " + OptName$()
+  ENDIF
   TEXT 4, MAPH + 28, m$, "LT", 1, 1, CGRY, CBLK
   IF armed = 1 THEN
     TEXT 4, MAPH + 48, "ARROW READY - pick a tunnel", "LT", 1, 1, CARM, CBLK
@@ -878,18 +923,26 @@ END SUB
 
 ' The hunter tumbling into the slime, as the TI shows it.
 SUB PitFall
-  LOCAL y
-  FOR y = 60 TO 200 STEP 8
-    BOX 0, 0, 320, 320, 0, CGRN, CGRN
-    BOX 40, 0, 60, 320, 0, CBLUE, CBLUE
-    BOX 220, 0, 60, 320, 0, CBLUE, CBLUE
-    BOX 100, 230, 120, 90, 0, CWHT, CWHT
+  LOCAL y, py
+  ' The scene is static - repainting all of it every frame is what made this
+  ' blink.  Draw it once, then only erase and redraw the falling figure.
+  BOX 0, 0, 320, 320, 0, CGRN, CGRN
+  BOX 40, 0, 60, 320, 0, CBLUE, CBLUE
+  BOX 220, 0, 60, 320, 0, CBLUE, CBLUE
+  BOX 100, 230, 120, 90, 0, CWHT, CWHT
+  py = -1
+  FOR y = 60 TO 210 STEP 6
+    IF py >= 0 THEN
+      BOX 148, py - 8, 26, 38, 0, CGRN, CGRN
+      BOX 100, 230, 120, 90, 0, CWHT, CWHT
+    ENDIF
     CIRCLE 160, y, 4, 0, 1, CYEL, CYEL
     LINE 160, y + 4, 160, y + 14, 2, CYEL
     LINE 152, y + 6, 168, y + 6, 2, CYEL
     LINE 160, y + 14, 154, y + 22, 2, CYEL
     LINE 160, y + 14, 166, y + 22, 2, CYEL
-    PAUSE 40
+    py = y
+    PAUSE 45
   NEXT y
 END SUB
 
@@ -901,6 +954,7 @@ FUNCTION ShowTally()
     k = WaitAnyKey()
     IF k = 81 OR k = 113 THEN            ' Q - reveal the map
       revealAll = 1
+      CLS CBLK
       DrawMap
       TEXT 4, MAPH + 8, "The maze as it really was.", "LT", 1, 1, CWHT, CBLK
       TEXT 4, MAPH + 28, "Press any key", "LT", 1, 1, CGRY, CBLK
