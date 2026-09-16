@@ -74,7 +74,7 @@ I2C keyboard disconnect errors.
 | `tiny-adv-maker/advplay-mmbasic.bas` | Older MMB4L desktop build. Diverged; not maintained in step. |
 | `tiny-adv-maker/advcreate.bas` | Adventure authoring tool. **Still uses MMB4L-sized DIMs — will not fit RP2040 heap.** |
 | `tiny-adv-maker/*.adv` | Pipe-delimited adventure data. Sections: SETTINGS, ROOMS, OBJECTS, VOCABULARY, RESPONSES, MESSAGES. |
-| `wip/` | Prototypes + notes. `starfield.bas` complete; `wumpus.bas` is a stub (no hazard detection). |
+| `wip/` | Prototypes + notes. `starfield.bas` and `wumpus.bas` are both complete and playable; `wumpus_balance.py` validates the maze generator off-device. |
 | `pico_serial_xmodem.md` | macOS picocom + XMODEM transfer workflow. |
 
 ## Coding conventions in this repo
